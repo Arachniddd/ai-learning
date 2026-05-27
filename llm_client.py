@@ -7,7 +7,7 @@ load_dotenv()
 
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
-        base_url="https://platform.deepseek.com/"
+    base_url="https://api.deepseek.com",
 )
 
 def summarize_note(text : str) -> dict:
@@ -43,4 +43,3 @@ def summarize_note(text : str) -> dict:
 
     content = response.choices[0].message.content
     return json.loads(content)
-
