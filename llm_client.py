@@ -48,7 +48,7 @@ def summarize_note(text : str) -> dict:
 
 def answer_with_context(question: str, contexts: list[dict]):
     context_text = "\n\n".join(
-        [f"chunk {c['index']} from {c['source']}]\n{c['content']}" for c in contexts]
+        [f"chunk {c['id']} from {c['source']}]\n{c['content']}" for c in contexts]
     )
 
     prompt = f"""

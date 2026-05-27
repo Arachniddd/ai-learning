@@ -12,7 +12,7 @@ def add_document(text : str, source : str = "user_input") -> list[dict]:
 
     for i, chunk in enumerate(new_chunks):
         item = {
-            "index" : start_id + i,
+            "id" : start_id + i,
             "content" : chunk,
             "source" : source
         }
