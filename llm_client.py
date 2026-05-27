@@ -1,14 +1,45 @@
 import os
-from typing import Any
+import json
+from dotenv import load_dotenv
+from openai import OpenAI
 
-import requests
+load_dotenv()
 
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY")
+)
 
-def post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
-    response = requests.post(url, json=payload, timeout=30)
-    response.raise_for_status()
-    return response.json()
+def summarize_note(text : str) -> dict:
+    prompt =f"""
+    你是一个计算机课程助教。请总结下面这段课程笔记。
 
+    要求返回 JSON，格式如下：
+    {{
+    "summary": "一段简短总结",
+    "key_points": ["重点1", "重点2", "重点3"],
+    "questions": ["复习问题1", "复习问题2"]
+    }}
 
-def get_env(name: str, default: str | None = None) -> str | None:
-    return os.getenv(name, default)
+    课程笔记：
+    {text}
+    """
+
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {
+                "role" : "system",
+                "content" : "你只返回合法 JSON，不要输出 Markdown，不要输出解释。"
+            },
+            {
+                "role" : "user",
+                "content" : prompt
+            }
+        ],
+        temperature=0.2,
+        response_format={"type" : "json_object"}
+    )
+
+    content = response.choices[0].message.content
+    return json.loads(content)
+
