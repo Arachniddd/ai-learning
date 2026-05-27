@@ -1,5 +1,0 @@
-Process is an abstraction of a running program.
-
-A syscall allows user programs to request services from the kernel.
-
-A pipe is used for inter-process communication.
