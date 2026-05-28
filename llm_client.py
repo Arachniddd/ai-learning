@@ -163,7 +163,7 @@ def decide_tool_use(message : str) -> dict:
 def final_answer_with_tool_result(message : str, tool_result : list[dict]) -> dict:
     context_text = "\n\n".join(
         [
-            f"chunk{c["id"]} from {c["source"]}\n{c["content"]}"
+            f"chunk {c['id']} from {c['source']}\n{c['content']}"
             for c in tool_result
         ]
     )
