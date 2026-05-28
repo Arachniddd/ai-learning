@@ -1,6 +1,7 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from splitter import split_by_paragraph
+import uuid
 
 client = chromadb.PersistentClient(path="./chroma_db")
 collection = client.get_or_create_collection(name="course_notes")
@@ -16,7 +17,7 @@ def add_document_to_vector_store(text : str, source : str = "user_input") -> lis
     metadatas = []
 
     for i, chunk in enumerate(chunks):
-        chunk_id = f"{source}-{i}"
+        chunk_id = f"{source}-{uuid.uuid4()}-{i}"
 
         ids.append(chunk_id)
         docs.append(chunk)
