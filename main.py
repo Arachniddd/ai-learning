@@ -139,34 +139,61 @@ def delete_chunks():
 
 @app.post("/agent")
 def agent(request : AgentRequest):
-    result = decide_tool_use(message=request.message)
+    decision = decide_tool_use(message=request.message)
 
-    if not result.get("need_tool"):
+    if not decision.get("need_tool"):
         return {
             "mode": "direct_answer",
-            "answer": result.get("answer", "")
+            "answer": decision.get("answer", "")
         }
     
-    tool_name = result.get("tool_name")
-    args = result.get("arguments",{})
+    tool_name = decision.get("tool_name")
+    args = decision.get("arguments",{})
 
-    if tool_name != "search_knowledge_base":
+    if tool_name == "search_knowledge_base":
+        query = args.get("query", request.message)
+        top_k = args.get("top_k", 3)
+
+        tool_result = search_vector_store(query=query, top_k=top_k)
+
+        result = final_answer_with_tool_result(message=request.message, tool_result=tool_result)
+
         return {
-            "error": f"Unknown tool: {tool_name}"
+        "mode": "tool_call",
+        "tool_name": tool_name,
+        "tool_arguments": args,
+        "contexts": tool_result,
+        "answer": result.get("answer"),
+        "used_chunks": result.get("used_chunks", [])
+    }
+
+    if tool_name == "list_chunks":
+        limit = int(args.get("limit", 20))
+
+        chunks = list_all_chunks(limit=limit)
+
+        return {
+            "mode" : "tool_call",
+            "tool_name" : tool_name,
+            "tool_arguments" : args,
+            "tool_result" : chunks,
+            "answer" : f"当前知识库返回了{len(chunks)}个文件"
         }
+    
+    if tool_name == "summerize_text":
+        text = args.get("text","")
 
-    query = args.get("query", request.message)
-    top_k = args.get("top_k", 3)
+        summary = summarize_note(text)
 
-    tool_result = search_vector_store(query=query, top_k=top_k)
 
-    final_result = final_answer_with_tool_result(message=request.message, tool_result=tool_result)
-
+        return {
+            "mode" : "tool_call",
+            "tool_name" : tool_name,
+            "tool_arguments" : text,
+            "tool_result" : summary,
+            "answer" : summary.get(summary,"")
+        }
+    
     return {
-    "mode": "tool_call",
-    "tool_name": tool_name,
-    "tool_arguments": args,
-    "contexts": tool_result,
-    "answer": final_result.get("answer"),
-    "used_chunks": final_result.get("used_chunks", [])
+        "error" : f"Unknown tool : {tool_name}"
     }

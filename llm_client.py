@@ -91,14 +91,31 @@ def answer_with_context(question: str, contexts: list[dict]):
 
 def decide_tool_use(message : str) -> dict:
     prompt = f"""
-    你是一个 AI Agent。你可以使用一个工具：
+    你是一个 AI Agent。你可以使用以下工具：
 
-    工具名：search_knowledge_base
+    工具 1：
+    名称：search_knowledge_base
     作用：从用户上传的课程资料中检索相关内容
     参数：
     {{
     "query": "检索问题",
     "top_k": 3
+    }}
+
+    工具 2：
+    名称：list_chunks
+    作用：查看当前知识库中已经存储的文本片段
+    参数：
+    {{
+    "limit": 20
+    }}
+
+    工具 3：
+    名称：summarize_text
+    作用：总结用户直接提供的一段文本
+    参数：
+    {{ß
+    "text": "需要总结的文本"
     }}
 
     请判断用户的问题是否需要查询知识库。
