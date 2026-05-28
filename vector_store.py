@@ -94,3 +94,12 @@ def list_all_chunks(limit : int = 20) -> list[dict]:
         })
 
     return chunks
+
+def clear_vector_store() -> int:
+    results = collection.get()
+    ids = results.get("ids", [])
+
+    if ids:
+        collection.delete(ids=ids)
+
+    return len(ids)

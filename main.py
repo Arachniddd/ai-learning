@@ -21,6 +21,9 @@ class AskRequest(BaseModel):
     question : str
     top_k : int = 3
 
+class AgentRequest(BaseModel):
+    message : str
+
 
 
 @app.get("/")
@@ -125,4 +128,45 @@ def get_chunks(limit : int = 20):
     return {
         "count" : len(chunks),
         "chunks" : chunks
+    }
+
+@app.delete("/chunks")
+def delete_chunks():
+    num = clear_vector_store()
+    return {
+        "deleted_count" : num
+    }
+
+@app.post("/agent")
+def agent(request : AgentRequest):
+    result = decide_tool_use(message=request.message)
+
+    if not result.get("need_tool"):
+        return {
+            "mode": "direct_answer",
+            "answer": result.get("answer", "")
+        }
+    
+    tool_name = result.get("tool_name")
+    args = result.get("arguments",{})
+
+    if tool_name != "search_knowledge_base":
+        return {
+            "error": f"Unknown tool: {tool_name}"
+        }
+
+    query = args.get("query", request.message)
+    top_k = args.get("top_k", 3)
+
+    tool_result = search_vector_store(query=query, top_k=top_k)
+
+    final_result = final_answer_with_tool_result(message=request.message, tool_result=tool_result)
+
+    return {
+    "mode": "tool_call",
+    "tool_name": tool_name,
+    "tool_arguments": args,
+    "contexts": tool_result,
+    "answer": final_result.get("answer"),
+    "used_chunks": final_result.get("used_chunks", [])
     }
