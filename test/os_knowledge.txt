@@ -1,0 +1,43 @@
+Operating System Notes
+
+An operating system is the software layer between user programs and hardware. It manages CPU time, memory, files, devices, and security. User programs usually do not access hardware directly. Instead, they ask the operating system for services through system calls.
+
+Processes
+
+A process is an abstraction of a running program. Each process has its own virtual address space, open files, registers, and execution state. The operating system can run many processes by switching the CPU from one process to another. This switch is called a context switch. Context switches allow multitasking, but they also have overhead because the kernel must save and restore process state.
+
+Threads
+
+A thread is a unit of execution inside a process. Multiple threads in the same process share memory and open files, but each thread has its own stack and registers. Threads are useful when a program wants to do several tasks at the same time, such as handling user input while waiting for network data. Shared memory makes communication between threads fast, but it also creates synchronization problems.
+
+System Calls
+
+A system call is the controlled entry point from user mode into kernel mode. Examples include fork, exec, read, write, open, close, wait, and exit. System calls are necessary because user programs should not directly modify kernel data structures or hardware devices. The system call interface protects the system while still giving programs access to operating system services.
+
+Virtual Memory
+
+Virtual memory gives each process the illusion that it has a large private memory space. The operating system and hardware memory management unit translate virtual addresses into physical addresses. Page tables store these translations. Virtual memory improves isolation because one process cannot normally access another process's memory. It also allows the operating system to move pages between RAM and disk.
+
+Scheduling
+
+The scheduler decides which process or thread should run next on the CPU. A simple scheduler might use round-robin scheduling, where each runnable process receives a small time slice. More advanced schedulers consider priority, fairness, latency, and throughput. Good scheduling is important because it affects how responsive the system feels to users.
+
+File Systems
+
+A file system organizes data on storage devices. It provides files, directories, paths, metadata, and permissions. Applications use file system calls to create, read, write, rename, and delete files. Internally, a file system must track which disk blocks belong to which files. It may also use caching to improve performance.
+
+Pipes and Inter-Process Communication
+
+A pipe is a communication channel between processes. One process writes bytes into the pipe, and another process reads bytes from it. Pipes are often used in shells to connect commands, such as ls | grep txt. Inter-process communication can also use signals, shared memory, sockets, and message queues.
+
+Synchronization
+
+When multiple threads or processes access shared data, the operating system and programs need synchronization mechanisms. Locks, semaphores, condition variables, and monitors can help prevent race conditions. A race condition happens when the result of a program depends on the unpredictable timing of concurrent operations.
+
+Deadlock
+
+Deadlock occurs when two or more processes are waiting for each other forever. For example, process A holds lock 1 and waits for lock 2, while process B holds lock 2 and waits for lock 1. Common strategies for dealing with deadlock include prevention, avoidance, detection, and recovery.
+
+Kernel and User Mode
+
+Modern CPUs usually provide at least two privilege levels: user mode and kernel mode. User programs run in user mode with limited privileges. The operating system kernel runs in kernel mode and can access hardware and protected memory. Switching between these modes helps protect the system from buggy or malicious programs.

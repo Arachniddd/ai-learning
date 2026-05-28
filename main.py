@@ -6,8 +6,10 @@ from rag_store import *
 from vector_store import *
 import time
 from logger import *
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class SplitRequest(BaseModel):
     text : str
@@ -255,7 +257,7 @@ def agent(request : AgentRequest):
     except Exception as e:
         trace["error"] = str(e)
         trace["duration_ms"] = int((time.time() - start_time) * 1000)
-        
+
         write_agent_log(trace)
 
         return {
