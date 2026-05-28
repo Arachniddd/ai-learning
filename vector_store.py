@@ -1,6 +1,6 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
-from splitter import split_by_paragraph
+from splitter import *
 import uuid
 
 client = chromadb.PersistentClient(path="./chroma_db")
@@ -10,7 +10,7 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def add_document_to_vector_store(text : str, source : str = "user_input") -> list[dict]:
-    chunks = split_by_paragraph(text)
+    chunks = split_by_size(text)
 
     docs = []
     ids = []
@@ -72,3 +72,25 @@ def search_vector_store(query : str, top_k : int = 3) -> list[dict]:
             })
     
     return contexts
+
+
+def list_all_chunks(limit : int = 20) -> list[dict]:
+    result = collection.get(limit=limit)
+
+    chunks = []
+
+    ids = result.get("ids",[])
+    documents = result.get("documents",[])
+    metadatas = result.get("metadatas", [])
+    
+    for i in range(len(documents)):
+        metadata = metadatas[i] or {}
+
+        chunks.append({
+            "id": ids[i],
+            "content": documents[i],
+            "source": metadata.get("source"),
+            "chunk_index": metadata.get("chunk_index")
+        })
+
+    return chunks

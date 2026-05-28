@@ -117,3 +117,12 @@ async def upload_file(file : UploadFile = File(...)):
         "chunk_count": len(added_chunks),
         "chunks": added_chunks
     }
+
+@app.get("/chunks")
+def get_chunks(limit : int = 20):
+    chunks = list_all_chunks(limit)
+
+    return {
+        "count" : len(chunks),
+        "chunks" : chunks
+    }
