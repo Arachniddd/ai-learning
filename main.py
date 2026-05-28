@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 from llm_client import *
 from splitter import split_by_paragraph
@@ -91,4 +91,29 @@ def ask(request : AskRequest):
         "answer" : result["answer"],
         "used_chunks" : result.get("used_chunks", []),
         "contexts" : contexts
+    }
+
+@app.post("/upload_file")
+async def upload_file(file : UploadFile = File(...)):
+    filename = file.filename
+
+    if not filename.endswith((".txt", ".md")):
+        return {
+            "error": "Only .txt and .md file are supported now."
+        }
+    
+    content_bytes = await file.read()
+
+    text = content_bytes.decode("utf-8")
+
+    added_chunks = add_document_to_vector_store(
+        text=text,
+        source=filename
+    )
+
+    return{
+        "message": "file uploaded and added to vector store",
+        "filename": filename,
+        "chunk_count": len(added_chunks),
+        "chunks": added_chunks
     }
