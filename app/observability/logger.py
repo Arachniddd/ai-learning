@@ -3,10 +3,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-LOG_PATH = Path("agent_logs.jsonl")
+LOG_PATH = Path("logs") / "agent_logs.jsonl"
 
 def write_agent_log(record : dict[str, Any]) -> None:
     record["timestamp"] = time.time()
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     with LOG_PATH.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")

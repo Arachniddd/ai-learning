@@ -1,30 +1,27 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from app.rag.splitter import *
-import uuid
 
-client = chromadb.PersistentClient(path="./chroma_db")
-collection = client.get_or_create_collection(name="course_notes")
+client = chromadb.PersistentClient(path="./data/chroma")
+collection = client.get_or_create_collection(name="knowledge_base")
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-
 def add_document_to_vector_store(text : str, source : str = "user_input") -> list[dict]:
-    chunks = split_by_size(text)
+    chunks = split_by_size(text=text, source=source)
 
     docs = []
     ids = []
     metadatas = []
+    embeddings = []
 
     for i, chunk in enumerate(chunks):
-        chunk_id = f"{source}-{uuid.uuid4()}-{i}"
-
-        ids.append(chunk_id)
-        docs.append(chunk)
+        ids.append(chunk.id)
+        docs.append(chunk.content)
         metadatas.append(
             {
-                "source" : source,
-                "chunk_index" : i
+                "source" : chunk.source,
+                "chunk_index" : chunk.chunk_index
             }
         )
 
@@ -42,8 +39,11 @@ def add_document_to_vector_store(text : str, source : str = "user_input") -> lis
     for i, chunk in enumerate(chunks):
        result.append({
             "id": ids[i],
-            "content": chunk,
-            "source": source
+            "content": chunk.content,
+            "source": chunk.source,
+            "chunk_index": chunk.chunk_index,
+            "section": chunk.section,
+            "token_count": chunk.token_count,
         })
        
     return result

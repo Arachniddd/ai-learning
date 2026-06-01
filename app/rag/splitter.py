@@ -1,11 +1,34 @@
 import json
 import sys
+import uuid
 from pathlib import Path
 
+from app.rag.types import Chunk
 
-def split_by_paragraph(text: str) -> list[str]:
+
+def build_chunk_id(source: str, chunk_index: int) -> str:
+    safe_source = source.replace("/", "_").replace(" ", "_")
+    return f"{safe_source}:{uuid.uuid4().hex}:{chunk_index}"
+
+
+def split_by_paragraph(text: str, source: str = "user_input") -> list[Chunk]:
     paragraphs = text.split("\n\n")
-    return [paragraph.strip() for paragraph in paragraphs if paragraph.strip()]
+    chunks = []
+
+    for index, paragraph in enumerate(paragraphs):
+        content = paragraph.strip()
+
+        if content:
+            chunks.append(
+                Chunk(
+                    id=build_chunk_id(source, index),
+                    content=content,
+                    source=source,
+                    chunk_index=index,
+                )
+            )
+
+    return chunks
 
 
 def split_file(input_path: str | Path, output_path: str | Path) -> int:
@@ -19,15 +42,11 @@ def split_file(input_path: str | Path, output_path: str | Path) -> int:
         raise ValueError("Only .txt and .md files are supported now.")
 
     text = input_file.read_text(encoding="utf-8")
-    chunks = split_by_paragraph(text)
+    chunks = split_by_paragraph(text, source=str(input_file))
 
     data = [
-        {
-            "id": index,
-            "content": chunk,
-            "source": str(input_file),
-        }
-        for index, chunk in enumerate(chunks)
+        chunk.model_dump()
+        for chunk in chunks
     ]
 
     output_file.write_text(
@@ -38,7 +57,12 @@ def split_file(input_path: str | Path, output_path: str | Path) -> int:
     return len(chunks)
 
 
-def split_by_size(text : str, chunk_size : int = 500, overlap : int = 100):
+def split_by_size(
+    text : str,
+    source: str = "user_input",
+    chunk_size : int = 500,
+    overlap : int = 100,
+) -> list[Chunk]:
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
 
@@ -50,13 +74,22 @@ def split_by_size(text : str, chunk_size : int = 500, overlap : int = 100):
     
     start = 0
     chunks = []
+    chunk_index = 0
 
     while start < len(text):
         end = start + chunk_size
-        chunk = text[start:end].strip()
+        content = text[start:end].strip()
 
-        if chunk:
-            chunks.append(chunk)
+        if content:
+            chunks.append(
+                Chunk(
+                    id=build_chunk_id(source, chunk_index),
+                    content=content,
+                    source=source,
+                    chunk_index=chunk_index,
+                )
+            )
+            chunk_index += 1
         
         start = end - overlap
 

@@ -9,5 +9,5 @@ services:
     volumes:
       - .:/app
       - ./chroma_db:/app/chroma_db
-      - ./agent_logs.jsonl:/app/agent_logs.jsonl
+      - ./logs:/app/logs
     restart: unless-stopped
