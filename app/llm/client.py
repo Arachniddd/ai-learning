@@ -1,5 +1,7 @@
 import os
 import json
+from typing import Any
+
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -12,6 +14,36 @@ client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com",
 )
+
+
+def chat_with_llm(
+    prompt: str,
+    system_prompt: str = "你是一个可靠的 AI 助手。",
+    model: str = "deepseek-v4-flash",
+    temperature: float = 0.2,
+    response_format: dict[str, Any] | None = None,
+) -> str:
+    request_args = {
+        "model": model,
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        "temperature": temperature,
+    }
+
+    if response_format is not None:
+        request_args["response_format"] = response_format
+
+    response = client.chat.completions.create(**request_args)
+    return response.choices[0].message.content or ""
+
 
 def summarize_note(text : str) -> dict:
     prompt =f"""
@@ -27,28 +59,18 @@ def summarize_note(text : str) -> dict:
     课程笔记：
     {text}
     """
-    
-    response = client.chat.completions.create(
-        model="deepseek-v4-flash",
-        messages=[
-            {
-                "role" : "system",
-                "content" : "你只返回合法 JSON，不要输出 Markdown，不要输出解释。"
-            },
-            {
-                "role" : "user",
-                "content" : prompt
-            }
-        ],
+    content = chat_with_llm(
+        prompt=prompt,
+        system_prompt="你只返回合法 JSON，不要输出 Markdown，不要输出解释。",
         temperature=0.2,
-        response_format={"type" : "json_object"}
+        response_format={"type": "json_object"},
     )
 
-    content = response.choices[0].message.content
     return json.loads(content)
 
 
 def answer_with_context(question: str, contexts: list[Chunk]):
+    rewritten_question = rewrite_query(question)
     context_text = "\n\n".join(
         [f"chunk {c.id} from {c.source}]\n{c.content}" for c in contexts]
     )
@@ -62,7 +84,7 @@ def answer_with_context(question: str, contexts: list[Chunk]):
     {context_text}
 
     问题：
-    {question}
+    {rewritten_question}
 
     请返回 JSON，格式如下：
     {{
@@ -71,27 +93,18 @@ def answer_with_context(question: str, contexts: list[Chunk]):
     }}
     """
 
-    response = client.chat.completions.create(
-        model="deepseek-v4-flash",
-        messages=[
-            {
-                "role" : "system",
-                "content" : "你只返回合法 JSON，不要输出 Markdown，不要输出解释。"
-            },
-            {
-                "role" : "user",
-                "content" : prompt
-            }
-        ],
+    content = chat_with_llm(
+        prompt=prompt,
+        system_prompt="你只返回合法 JSON，不要输出 Markdown，不要输出解释。",
         temperature=0.2,
-        response_format={"type":"json_object"}
+        response_format={"type": "json_object"},
     )
 
-    content = response.choices[0].message.content
     return json.loads(content)
 
 
 def decide_tool_use(message : str) -> dict:
+    rewritten_message = rewrite_query(message)
     prompt = f"""
     你是一个 AI Agent。你可以使用以下工具：
 
@@ -139,30 +152,21 @@ def decide_tool_use(message : str) -> dict:
     }}
 
     用户问题：
-    {message}
+    {rewritten_message}
     """
 
-    response = client.chat.completions.create(
-        model="deepseek-v4-flash",
-        messages=[
-            {
-                "role" : "system",
-                "content" : "你只返回合法 JSON，不要输出 Markdown，不要输出解释。"
-            },
-            {
-                "role" : "user",
-                "content" : prompt
-            }
-        ],
+    content = chat_with_llm(
+        prompt=prompt,
+        system_prompt="你只返回合法 JSON，不要输出 Markdown，不要输出解释。",
         temperature=0.1,
-        response_format={"type" : "json_object"}
+        response_format={"type": "json_object"},
     )
 
-    content = response.choices[0].message.content
     return json.loads(content)
 
 
 def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> dict:
+    rewritten_message = rewrite_query(message)
     context_text = "\n\n".join(
         [
             f"chunk {c.id} from {c.source}\n{c.content}"
@@ -174,7 +178,7 @@ def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> d
     你是一个计算机课程助教。请根据工具检索到的资料回答用户问题。
 
     用户问题：
-    {message}
+    {rewritten_message}
 
     工具返回的资料：
     {context_text}
@@ -191,20 +195,37 @@ def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> d
     }}
     """
 
-    response = client.chat.completions.create(
+    content = chat_with_llm(
+        prompt=prompt,
         model="deepseek-chat",
-        messages=[
-            {
-                "role": "system",
-                "content": "你只返回合法 JSON，不要输出 Markdown，不要输出解释。"
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
+        system_prompt="你只返回合法 JSON，不要输出 Markdown，不要输出解释。",
         temperature=0.2,
-        response_format={"type": "json_object"}
+        response_format={"type": "json_object"},
     )
 
-    return json.loads(response.choices[0].message.content)
+    return json.loads(content)
+
+def rewrite_query(question: str) -> str:
+    prompt = f"""
+你是一个 RAG 检索查询改写器。
+
+你的任务：
+把用户问题改写成更适合向量检索的查询。
+要求：
+1. 保留用户原始意图。
+2. 补充可能相关的专业关键词。
+3. 不要回答问题。
+4. 只输出改写后的查询，不要输出解释。
+
+用户问题：
+{question}
+"""
+
+    response = chat_with_llm(prompt)
+
+    rewritten = response.strip()
+
+    if not rewritten:
+        return question
+
+    return rewritten
