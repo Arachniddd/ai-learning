@@ -8,7 +8,7 @@ collection = client.get_or_create_collection(name="knowledge_base")
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def add_document_to_vector_store(text : str, source : str = "user_input") -> list[dict]:
-    chunks = split_by_size(text=text, source=source)
+    chunks = split_text(text=text, source=source)
 
     docs = []
     ids = []

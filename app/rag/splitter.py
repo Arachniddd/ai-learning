@@ -1,9 +1,19 @@
 import json
 import sys
 import uuid
+import re
 from pathlib import Path
 
 from app.rag.types import Chunk
+
+def estimate_token_count(text: str) -> int:
+    """
+    粗略估算 token 数。
+    中文场景可以先粗略用 len(text) / 2。
+    后面如果你接 tiktoken，再改成精确计算。
+    """
+    return max(1, len(text) // 2)
+
 
 
 def build_chunk_id(source: str, chunk_index: int) -> str:
@@ -57,7 +67,7 @@ def split_file(input_path: str | Path, output_path: str | Path) -> int:
     return len(chunks)
 
 
-def split_by_size(
+def split_plain_text(
     text : str,
     source: str = "user_input",
     chunk_size : int = 500,
@@ -94,6 +104,123 @@ def split_by_size(
         start = end - overlap
 
     return chunks
+
+
+def split_markdown_by_headers(
+    text: str,
+    source: str,
+    max_section_chars: int = 1000,
+    chunk_size: int = 700,
+    overlap: int = 120,
+) -> list[Chunk]:
+    if max_section_chars <= 0:
+        raise ValueError("max_section_chars must be positive")
+
+    lines = text.splitlines()
+
+    current_headers = []
+    current_content = []
+    sections = []
+
+    def flush_section():
+        nonlocal current_content
+
+        content = "\n".join(current_content).strip()
+        if not content:
+            current_content = []
+            return
+
+        section_name = " / ".join(current_headers)
+        sections.append({
+            "section": section_name,
+            "content": content,
+        })
+        current_content = []
+
+    for line in lines:
+        match = re.match(r"^(#{1,6})\s+(.*)$", line)
+
+        if match:
+            flush_section()
+
+            level = len(match.group(1))
+            title = match.group(2).strip()
+
+            current_headers = current_headers[:level - 1]
+            current_headers.append(title)
+
+            current_content.append(line)
+        else:
+            current_content.append(line)
+
+    flush_section()
+
+    chunks = []
+    chunk_index = 0
+
+    for section in sections:
+        content = section["content"]
+        section_name = section["section"]
+
+        if len(content) <= max_section_chars:
+            chunks.append(
+                Chunk(
+                    id=build_chunk_id(source, chunk_index),
+                    content=content,
+                    source=source,
+                    section=section_name,
+                    chunk_index=chunk_index,
+                    token_count=estimate_token_count(content),
+                )
+            )
+            chunk_index += 1
+        else:
+            sub_chunks = split_plain_text(
+                text=content,
+                source=source,
+                chunk_size=chunk_size,
+                overlap=overlap,
+            )
+
+            for sub in sub_chunks:
+                chunks.append(
+                    sub.model_copy(
+                        update={
+                            "id": build_chunk_id(source, chunk_index),
+                            "section": section_name,
+                            "chunk_index": chunk_index,
+                            "token_count": estimate_token_count(sub.content),
+                        }
+                    )
+                )
+                chunk_index += 1
+
+    return chunks
+    
+
+
+def split_text(
+    text: str,
+    source: str,
+    max_section_chars: int = 1000,
+    chunk_size: int = 700,
+    overlap: int = 120,
+) -> list[Chunk]:
+    if source.endswith(".md") or "#" in text[:200]:
+        return split_markdown_by_headers(
+            text=text,
+            source=source,
+            max_section_chars=max_section_chars,
+            chunk_size=chunk_size,
+            overlap=overlap,
+        )
+
+    return split_plain_text(
+        text=text,
+        source=source,
+        chunk_size=chunk_size,
+        overlap=overlap,
+    )
 
 
 def main():
