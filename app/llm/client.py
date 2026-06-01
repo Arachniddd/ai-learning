@@ -3,6 +3,8 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from app.rag.types import Chunk
+
 
 load_dotenv()
 
@@ -46,9 +48,9 @@ def summarize_note(text : str) -> dict:
     return json.loads(content)
 
 
-def answer_with_context(question: str, contexts: list[dict]):
+def answer_with_context(question: str, contexts: list[Chunk]):
     context_text = "\n\n".join(
-        [f"chunk {c['id']} from {c['source']}]\n{c['content']}" for c in contexts]
+        [f"chunk {c.id} from {c.source}]\n{c.content}" for c in contexts]
     )
 
     prompt = f"""
@@ -160,10 +162,10 @@ def decide_tool_use(message : str) -> dict:
     return json.loads(content)
 
 
-def final_answer_with_tool_result(message : str, tool_result : list[dict]) -> dict:
+def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> dict:
     context_text = "\n\n".join(
         [
-            f"chunk {c['id']} from {c['source']}\n{c['content']}"
+            f"chunk {c.id} from {c.source}\n{c.content}"
             for c in tool_result
         ]
     )
