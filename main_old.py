@@ -11,23 +11,6 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-class SplitRequest(BaseModel):
-    text : str
-
-class SummerizeRequest(BaseModel):
-    text : str
-
-class AdddocumentRequest(BaseModel):
-    text : str
-    source : str = "user_input"
-
-class AskRequest(BaseModel):
-    question : str
-    top_k : int = 3
-
-class AgentRequest(BaseModel):
-    message : str
-
 
 
 @app.get("/")

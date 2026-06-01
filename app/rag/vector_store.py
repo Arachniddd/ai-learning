@@ -1,6 +1,6 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
-from splitter import *
+from app.rag.splitter import *
 import uuid
 
 client = chromadb.PersistentClient(path="./chroma_db")
