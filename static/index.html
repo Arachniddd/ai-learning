@@ -2,94 +2,388 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Course RAG Agent</title>
   <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-soft: #f1f5f9;
+      --text: #18212f;
+      --muted: #64748b;
+      --line: #d9e1ea;
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+      --accent-soft: #d8f3ef;
+      --danger: #b42318;
+      --shadow: 0 14px 34px rgba(24, 33, 47, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 40px auto;
-      line-height: 1.6;
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    .app-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 0 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 720;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.4fr);
+      gap: 20px;
+      margin-top: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 650;
+      color: #334155;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px;
+      border: 1px dashed #aebccd;
+      border-radius: 8px;
+      background: var(--panel-soft);
+      color: var(--muted);
     }
 
     textarea {
       width: 100%;
-      height: 120px;
-      margin-top: 8px;
+      min-height: 190px;
+      resize: vertical;
+      padding: 12px 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+
+    textarea:focus,
+    input[type="file"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
     }
 
     button {
-      margin-top: 10px;
-      padding: 8px 14px;
+      min-height: 40px;
+      padding: 0 15px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #ffffff;
+      font: inherit;
+      font-weight: 650;
       cursor: pointer;
     }
 
-    pre {
-      background: #f5f5f5;
-      padding: 12px;
-      overflow-x: auto;
+    button:hover {
+      background: var(--accent-dark);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.62;
+    }
+
+    .secondary-button {
+      background: #ffffff;
+      border-color: var(--line);
+      color: var(--text);
+    }
+
+    .secondary-button:hover {
+      background: var(--panel-soft);
+    }
+
+    .result-block {
+      display: grid;
+      gap: 12px;
+    }
+
+    .answer-box {
+      min-height: 126px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      font-size: 15px;
       white-space: pre-wrap;
     }
 
-    .section {
-      margin-bottom: 32px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid #ddd;
+    pre {
+      min-height: 110px;
+      max-height: 340px;
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f172a;
+      color: #dbeafe;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    @media (max-width: 860px) {
+      .app-shell {
+        width: min(100% - 22px, 680px);
+        padding-top: 18px;
+      }
+
+      header {
+        display: block;
+      }
+
+      .status-pill {
+        margin-top: 14px;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>AI Course RAG Agent</h1>
+  <main class="app-shell">
+    <header>
+      <div>
+        <h1>AI Course RAG Agent</h1>
+        <p class="subtitle">上传课程资料，向知识库提问，查看 Agent 的检索过程。</p>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="statusText">Ready</span>
+      </div>
+    </header>
 
-  <div class="section">
-    <h2>1. 上传课程资料</h2>
-    <input type="file" id="fileInput" />
-    <br />
-    <button onclick="uploadFile()">上传文件</button>
-    <pre id="uploadResult"></pre>
-  </div>
+    <section class="workspace">
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>上传课程资料</h2>
+          </div>
+          <div class="panel-body">
+            <label for="fileInput">文件</label>
+            <input type="file" id="fileInput" accept=".txt,.md" />
+            <div class="button-row">
+              <button id="uploadButton" onclick="uploadFile()">上传文件</button>
+            </div>
+            <pre id="uploadResult" class="muted">等待上传 .txt 或 .md 文件。</pre>
+          </div>
+        </section>
 
-  <div class="section">
-    <h2>2. 向 Agent 提问</h2>
-    <textarea id="messageInput" placeholder="例如：根据我上传的 OS 笔记解释 syscall 是什么"></textarea>
-    <br />
-    <button onclick="askAgent()">提问</button>
-  </div>
+        <section class="panel">
+          <div class="panel-header">
+            <h2>向 Agent 提问</h2>
+          </div>
+          <div class="panel-body">
+            <label for="messageInput">问题</label>
+            <textarea id="messageInput" placeholder="例如：根据我上传的 OS 笔记解释 syscall 是什么"></textarea>
+            <div class="button-row">
+              <button id="askButton" onclick="askAgent()">提问</button>
+              <button class="secondary-button" onclick="clearQuestion()">清空</button>
+            </div>
+          </div>
+        </section>
+      </div>
 
-  <div class="section">
-    <h2>3. 答案</h2>
-    <pre id="answerResult"></pre>
-  </div>
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>答案</h2>
+          </div>
+          <div class="panel-body result-block">
+            <div id="answerResult" class="answer-box muted">答案会显示在这里。</div>
+          </div>
+        </section>
 
-  <div class="section">
-    <h2>4. 检索到的上下文 / 工具结果</h2>
-    <pre id="toolResult"></pre>
-  </div>
+        <section class="panel">
+          <div class="panel-header">
+            <h2>检索上下文 / 工具结果</h2>
+          </div>
+          <div class="panel-body">
+            <pre id="toolResult" class="muted">暂无工具结果。</pre>
+          </div>
+        </section>
 
-  <div class="section">
-    <h2>5. Agent Trace</h2>
-    <pre id="traceResult"></pre>
-  </div>
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Agent Trace</h2>
+          </div>
+          <div class="panel-body">
+            <pre id="traceResult" class="muted">暂无 trace。</pre>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
 
   <script>
+    function setStatus(text) {
+      document.getElementById("statusText").textContent = text;
+    }
+
+    function formatJson(data) {
+      return JSON.stringify(data, null, 2);
+    }
+
+    function clearQuestion() {
+      document.getElementById("messageInput").value = "";
+      document.getElementById("answerResult").textContent = "答案会显示在这里。";
+      document.getElementById("toolResult").textContent = "暂无工具结果。";
+      document.getElementById("traceResult").textContent = "暂无 trace。";
+      setStatus("Ready");
+    }
+
     async function uploadFile() {
       const fileInput = document.getElementById("fileInput");
       const output = document.getElementById("uploadResult");
+      const button = document.getElementById("uploadButton");
 
       if (!fileInput.files.length) {
         output.textContent = "请先选择一个文件。";
+        output.className = "error";
         return;
       }
 
       const formData = new FormData();
       formData.append("file", fileInput.files[0]);
 
-      const response = await fetch("/docs-api/upload_file", {
-        method: "POST",
-        body: formData
-      });
+      button.disabled = true;
+      setStatus("Uploading");
+      output.className = "muted";
+      output.textContent = "上传中...";
 
-      const data = await response.json();
-      output.textContent = JSON.stringify(data, null, 2);
+      try {
+        const response = await fetch("/docs-api/upload_file", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+        output.className = response.ok ? "" : "error";
+        output.textContent = formatJson(data);
+        setStatus(response.ok ? "Uploaded" : "Upload failed");
+      } catch (error) {
+        output.className = "error";
+        output.textContent = error.message;
+        setStatus("Upload failed");
+      } finally {
+        button.disabled = false;
+      }
     }
 
     async function askAgent() {
@@ -97,31 +391,45 @@
       const answerResult = document.getElementById("answerResult");
       const toolResult = document.getElementById("toolResult");
       const traceResult = document.getElementById("traceResult");
+      const button = document.getElementById("askButton");
 
       if (!message.trim()) {
         answerResult.textContent = "请输入问题。";
+        answerResult.className = "answer-box error";
         return;
       }
 
+      button.disabled = true;
+      setStatus("Thinking");
+      answerResult.className = "answer-box muted";
       answerResult.textContent = "思考中...";
       toolResult.textContent = "";
       traceResult.textContent = "";
 
-      const response = await fetch("/agent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: message
-        })
-      });
+      try {
+        const response = await fetch("/agent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: message
+          })
+        });
 
-      const data = await response.json();
-
-      answerResult.textContent = data.answer || data.error || "";
-      toolResult.textContent = JSON.stringify(data.tool_result || data.contexts || null, null, 2);
-      traceResult.textContent = JSON.stringify(data.trace || data, null, 2);
+        const data = await response.json();
+        answerResult.className = data.error ? "answer-box error" : "answer-box";
+        answerResult.textContent = data.answer || data.error || "";
+        toolResult.textContent = formatJson(data.tool_result || data.contexts || null);
+        traceResult.textContent = formatJson(data.trace || data);
+        setStatus(data.error ? "Error" : "Answered");
+      } catch (error) {
+        answerResult.className = "answer-box error";
+        answerResult.textContent = error.message;
+        setStatus("Error");
+      } finally {
+        button.disabled = false;
+      }
     }
   </script>
 </body>
