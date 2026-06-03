@@ -8,8 +8,12 @@ from app.rag.types import Chunk, RetrieveChunk
 from app.rag.vector_store import list_all_chunks
 
 
+def retrieve_knowledge_base(query: str, top_k: int = 3) -> dict:
+    return retrieve_reranked_chunks(question=query, top_k=top_k)
+
+
 def search_knowledge_base(query: str, top_k: int = 3) -> list[RetrieveChunk]:
-    result = retrieve_reranked_chunks(question=query, top_k=top_k)
+    result = retrieve_knowledge_base(query=query, top_k=top_k)
     return result["reranked_chunks"]
 
 

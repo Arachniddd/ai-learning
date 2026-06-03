@@ -57,18 +57,6 @@ def chat_with_llm(
     return response.choices[0].message.content or ""
 
 
-def chunks_to_dicts(chunks: list[Chunk | dict[str, Any]]) -> list[dict[str, Any]]:
-    result = []
-
-    for chunk in chunks:
-        if hasattr(chunk, "model_dump"):
-            result.append(chunk.model_dump())
-        else:
-            result.append(dict(chunk))
-
-    return result
-
-
 def summarize_note(text : str) -> dict:
     prompt = build_summarize_prompt(text)
     content = chat_with_llm(
@@ -97,7 +85,7 @@ def rewrite_query(question: str) -> str:
 
 def answer_with_chunks(
     question: str,
-    chunks: list[Chunk | dict[str, Any]],
+    chunks: list[Chunk],
     model: str = "deepseek-v4-flash",
 ) -> dict:
     if not chunks:
@@ -106,10 +94,9 @@ def answer_with_chunks(
             "used_chunks": [],
         }
 
-    chunk_dicts = chunks_to_dicts(chunks)
     prompt = build_rag_answer_prompt(
         question=question,
-        chunks=chunk_dicts,
+        chunks=chunks,
     )
 
     content = chat_with_llm(
@@ -123,13 +110,13 @@ def answer_with_chunks(
         "answer": content,
         "used_chunks": [
             {
-                "id": chunk.get("id"),
-                "source": chunk.get("source", ""),
-                "section": chunk.get("section", ""),
-                "score": chunk.get("score"),
-                "rerank_score": chunk.get("rerank_score"),
+                "id": chunk.id,
+                "source": chunk.source,
+                "section": chunk.section,
+                "score": getattr(chunk, "score", None),
+                "rerank_score": getattr(chunk, "rerank_score", None),
             }
-            for chunk in chunk_dicts
+            for chunk in chunks
         ],
     }
 
@@ -166,7 +153,7 @@ def rerank_chunks(
 )->list[RetrieveChunk]:
     prompt = build_rerank_prompt(
         question=question,
-        chunks=chunks_to_dicts(chunks),
+        chunks=chunks,
     )
 
     raw = chat_with_llm(

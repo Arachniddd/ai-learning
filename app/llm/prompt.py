@@ -1,3 +1,6 @@
+from app.rag.types import Chunk
+
+
 DEFAULT_SYSTEM_PROMPT = "你是一个可靠的 AI 助手。"
 JSON_ONLY_SYSTEM_PROMPT = "你只返回合法 JSON，不要输出 Markdown，不要输出解释。"
 RAG_ANSWER_SYSTEM_PROMPT = "你是一个严格基于资料回答问题的学习助手。"
@@ -26,18 +29,18 @@ def build_query_rewrite_prompt(question: str) -> str:
 """.strip()
 
 
-def build_rerank_prompt(question: str, chunks: list[dict]) -> str:
+def build_rerank_prompt(question: str, chunks: list[Chunk]) -> str:
     candidates_text = ""
 
     for idx, chunk in enumerate(chunks):
         candidates_text += f"""
 候选 {idx}:
-ID: {chunk.get("id", "")}
-来源: {chunk.get("source", "")}
-章节: {chunk.get("section", "")}
-向量检索分数: {chunk.get("score", "")}
+ID: {chunk.id}
+来源: {chunk.source}
+章节: {chunk.section or ""}
+向量检索分数: {getattr(chunk, "score", "")}
 内容:
-{chunk.get("content", "")[:800]}
+{chunk.content[:800]}
 """.strip() + "\n\n"
 
     return f"""
@@ -73,20 +76,20 @@ ID: {chunk.get("id", "")}
 """.strip()
 
 
-def build_rag_answer_prompt(question: str, chunks: list[dict]) -> str:
+def build_rag_answer_prompt(question: str, chunks: list[Chunk]) -> str:
     context_text = ""
 
     for idx, chunk in enumerate(chunks):
         context_text += f"""
 [资料 {idx}]
-chunk_id: {chunk.get("id", "")}
-source: {chunk.get("source", "")}
-section: {chunk.get("section", "")}
-score: {chunk.get("score", "")}
-rerank_score: {chunk.get("rerank_score", "")}
+chunk_id: {chunk.id}
+source: {chunk.source}
+section: {chunk.section or ""}
+score: {getattr(chunk, "score", "")}
+rerank_score: {getattr(chunk, "rerank_score", "")}
 
 content:
-{chunk.get("content", "")}
+{chunk.content}
 """.strip() + "\n\n"
 
     return f"""
@@ -96,7 +99,7 @@ content:
 1. 只能使用下面给出的资料回答。
 2. 如果资料不足，必须明确说“资料不足，无法确定”，不要编造。
 3. 回答要适合计算机专业学生理解。
-4. 关键结论后面要标注来源，例如：[资料 0]、[资料 1]。
+4. 关键结论后面要标注来源，例如：[资料来源0]、[资料来源1]。这里的来源从每个chunk中的source取。
 5. 如果多个资料都支持同一个结论，可以同时引用多个资料。
 6. 不要引用没有实际使用的资料。
 7. 最后用“使用资料：”列出你使用的资料编号。
