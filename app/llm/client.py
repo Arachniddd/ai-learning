@@ -12,6 +12,7 @@ from app.prompts.llm import (
     JSON_ONLY_SYSTEM_PROMPT,
     RAG_ANSWER_SYSTEM_PROMPT,
     SUMMARY_SYSTEM_PROMPT,
+    build_generate_quiz_prompt,
     build_query_rewrite_prompt,
     build_rag_answer_prompt,
     build_rerank_prompt,
@@ -123,6 +124,36 @@ def answer_with_chunks(
 
 def answer_with_context(question: str, contexts: list[Chunk]) -> dict:
     return answer_with_chunks(question=question, chunks=contexts)
+
+
+def generate_quiz_from_chunks(
+    topic: str,
+    chunks: list[Chunk],
+    num_questions: int = 5,
+) -> dict:
+    prompt = build_generate_quiz_prompt(
+        topic=topic,
+        chunks=chunks,
+        num_questions=num_questions,
+    )
+
+    quiz = chat_with_llm(prompt=prompt)
+
+    return {
+        "topic": topic,
+        "num_questions": num_questions,
+        "quiz": quiz,
+        "used_chunks": [
+            {
+                "id": chunk.id,
+                "source": chunk.source,
+                "section": chunk.section,
+                "score": getattr(chunk, "score", None),
+                "rerank_score": getattr(chunk, "rerank_score", None),
+            }
+            for chunk in chunks
+        ],
+    }
 
 
 def decide_tool_use(message : str) -> dict:

@@ -82,3 +82,13 @@ class ListChunksArgs(BaseModel):
 
 class SummarizeTextArgs(BaseModel):
     text: str = Field(description="需要总结的文本")
+
+
+class GenerateQuizArgs(BaseModel):
+    topic: str = Field(description="出题主题")
+    num_questions: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="生成题目数量",
+    )

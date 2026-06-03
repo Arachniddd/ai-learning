@@ -1,6 +1,7 @@
 from app.llm.client import (
     decide_tool_use as llm_decide_tool_use,
     final_answer_with_tool_result as llm_final_answer_with_tool_result,
+    generate_quiz_from_chunks,
     rerank_chunks,
     rewrite_query,
     summarize_note,
@@ -71,3 +72,20 @@ def list_chunks(limit: int = 20):
 
 def summarize_text(text: str):
     return summarize_note(text)
+
+
+def generate_quiz(topic: str, num_questions: int = 5) -> dict:
+    retrieval_result = retrieve_reranked_chunks(question=topic, top_k=3)
+    chunks = retrieval_result["reranked_chunks"]
+
+    if not chunks:
+        return {
+            "error": "没有检索到足够相关的资料，无法出题。",
+            "topic": topic,
+        }
+
+    return generate_quiz_from_chunks(
+        topic=topic,
+        chunks=chunks,
+        num_questions=num_questions,
+    )

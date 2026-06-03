@@ -132,3 +132,38 @@ def build_summarize_prompt(text: str) -> str:
 
 总结：
 """.strip()
+
+
+def build_generate_quiz_prompt(
+    topic: str,
+    chunks: list[Chunk],
+    num_questions: int,
+) -> str:
+    context_text = ""
+
+    for idx, chunk in enumerate(chunks):
+        context_text += f"""
+[资料 {idx}]
+source: {chunk.source}
+section: {chunk.section or ""}
+content:
+{chunk.content}
+""".strip() + "\n\n"
+
+    return f"""
+你是一个计算机课程助教。
+
+请基于资料围绕主题「{topic}」生成 {num_questions} 道复习题。
+
+要求：
+1. 题目必须基于资料，不要编造资料外内容。
+2. 题型可以包括选择题、简答题、判断题。
+3. 每道题都要给出答案和解析。
+4. 难度适合计算机专业本科生。
+5. 输出中文。
+
+资料：
+{context_text}
+
+请生成题目：
+""".strip()

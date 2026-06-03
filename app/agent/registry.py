@@ -4,12 +4,14 @@ from typing import Callable, Type
 from pydantic import BaseModel
 
 from app.agent.schemas import (
+    GenerateQuizArgs,
     InspectRequest,
     SearchKnowledgeBaseArgs,
     ListChunksArgs,
     SummarizeTextArgs,
 )
 from app.agent.tools import (
+    generate_quiz,
     inspect_retrieval,
     search_knowledge_base,
     list_chunks,
@@ -48,6 +50,12 @@ TOOL_REGISTRY : dict[str, ToolSpec] = {
         description="当用户明确要求总结一段文本时使用。",
         args_schema=SummarizeTextArgs,
         func=summarize_text,
+    ),
+    "generate_quiz": ToolSpec(
+        name="generate_quiz",
+        description="当用户要求基于知识库资料生成复习题、测验题、quiz 或练习题时使用。",
+        args_schema=GenerateQuizArgs,
+        func=generate_quiz,
     ),
 }
 
