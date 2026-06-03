@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File
-from app.schemas.document import SplitRequest, SummarizeRequest, AddDocumentRequest
+from app.api.schemas.document import SplitRequest, SummarizeRequest, AddDocumentRequest
 from app.rag.splitter import split_by_paragraph
 from app.rag.vector_store import (
     add_document_to_vector_store,

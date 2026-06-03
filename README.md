@@ -48,7 +48,8 @@ ai-learning/
 │   │   ├── routes_chat.py           # RAG 问答接口
 │   │   ├── routes_agent.py          # Agent 入口
 │   │   ├── routes_debug.py          # RAG 检索调试接口
-│   │   └── routes_logs.py           # Agent 日志读取
+│   │   ├── routes_logs.py           # Agent 日志读取
+│   │   └── schemas/                 # API 请求模型
 │   ├── agent/                      # Agent 执行层
 │   │   ├── planner.py               # 让 LLM 判断是否需要工具
 │   │   ├── tools.py                 # Agent 可调用工具
@@ -67,12 +68,11 @@ ai-learning/
 │   │   ├── vector_store.py          # ChromaDB 向量存储与检索
 │   │   ├── retrieve.py              # RAG 检索封装，接收已经准备好的 query
 │   │   ├── qa.py                    # 完整 RAG 问答流程
-│   ├── schemas/                    # FastAPI 请求模型
 │   └── observability/
 │       └── logger.py                # Agent trace 日志读写
 ├── static/
 │   └── index.html                   # 简单前端页面
-├── test/                            # 测试资料
+├── tests/                           # 测试资料
 ├── data/
 │   └── chroma/                      # ChromaDB 本地持久化数据
 ├── logs/

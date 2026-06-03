@@ -116,13 +116,13 @@ def build_agent_planner_prompt(
   {previous_steps_text}
 
   决策规则：
-  1. 如果用户问题需要查询上传资料、课程笔记、知识库，调用 search_knowledge_base。
-  2. 如果用户明确要求调试检索流程、查看 rewrite / retrieve / rerank 的中间结果，调用 inspect_retrieval。
-  3. 如果用户想查看知识库中已有 chunk，调用 list_chunks。
-  4. 如果用户明确要求总结一段给定文本，调用 summarize_text。
-  5. 如果用户要求基于资料生成复习题、测验题、quiz 或练习题，调用 generate_quiz。
-  6. 如果用户要求解释某个概念、术语、机制或知识点，调用 explain_concept。
-  7. 如果工具结果已经足够回答问题，输出 final_answer。
+  1. 如果工具结果已经足够回答问题，输出 final_answer。
+  2. 如果用户要求解释某个概念、术语、机制或知识点，直接调用 explain_concept，不要先调用 search_knowledge_base。
+  3. 如果用户要求基于资料生成复习题、测验题、quiz 或练习题，直接调用 generate_quiz，不要先调用 search_knowledge_base。
+  4. 如果用户明确要求调试检索流程、查看 rewrite / retrieve / rerank 的中间结果，调用 inspect_retrieval。
+  5. 如果用户想查看知识库中已有 chunk，调用 list_chunks。
+  6. 如果用户明确要求总结一段给定文本，调用 summarize_text。
+  7. 如果用户只是普通查询上传资料、课程笔记或知识库，并且没有匹配到更具体工具，才调用 search_knowledge_base。
   8. 如果资料不足，不要编造，应在 final_answer 中说明资料不足。
   9. 最多只调用必要工具，不要为了调用工具而调用工具。
   10. 只输出 JSON，不要输出其他解释。

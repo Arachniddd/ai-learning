@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.agent.executor import run_agent
-from app.schemas.agent import AgentRequest
+from app.api.schemas.agent import AgentRequest
 
 router = APIRouter()
 

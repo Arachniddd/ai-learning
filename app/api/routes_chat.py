@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.schemas.chat import AskRequest
+from app.api.schemas.chat import AskRequest
 from app.rag.qa import answer_question_with_rag
 
 router = APIRouter()

@@ -1,11 +1,11 @@
 import os
 import json
-import re
 from typing import Any
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from app.core.json_utils import extract_json_array
 from app.prompts.agent import build_tool_decision_prompt
 from app.prompts.llm import (
     DEFAULT_SYSTEM_PROMPT,
@@ -237,12 +237,7 @@ def rerank_chunks(
     )
 
     try:
-        match = re.search(r"\[.*\]", raw, re.S)
-
-        if not match:
-            return chunks[:top_k]
-        
-        scores = json.loads(match.group(0))
+        scores = extract_json_array(raw)
 
         score_map = {
             item["candidate_index"]: item
