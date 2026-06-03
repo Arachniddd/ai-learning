@@ -194,6 +194,68 @@
       background: var(--panel-soft);
     }
 
+    .ask-options {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 100px;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .mode-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      min-height: 40px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+
+    .mode-button {
+      min-height: 30px;
+      padding: 0 10px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .mode-button:hover {
+      background: #ffffff;
+      color: var(--text);
+    }
+
+    .mode-button.active {
+      background: #ffffff;
+      color: var(--accent-dark);
+      border-color: var(--line);
+      box-shadow: 0 1px 3px rgba(24, 33, 47, 0.08);
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 40px;
+      padding: 0 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    input[type="number"]:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+      background: var(--panel-soft);
+    }
+
     .result-block {
       display: grid;
       gap: 12px;
@@ -250,6 +312,10 @@
         grid-template-columns: 1fr;
       }
 
+      .ask-options {
+        grid-template-columns: 1fr;
+      }
+
       h1 {
         font-size: 24px;
       }
@@ -287,13 +353,26 @@
 
         <section class="panel">
           <div class="panel-header">
-            <h2>向 Agent 提问</h2>
+            <h2>提问</h2>
           </div>
           <div class="panel-body">
+            <div class="ask-options">
+              <div>
+                <label>接口</label>
+                <div class="mode-toggle" role="group" aria-label="提问接口">
+                  <button id="agentModeButton" class="mode-button active" onclick="setAskMode('agent')">Agent</button>
+                  <button id="ragModeButton" class="mode-button" onclick="setAskMode('rag')">直接 RAG</button>
+                </div>
+              </div>
+              <div>
+                <label for="topKInput">Top K</label>
+                <input id="topKInput" type="number" min="1" max="10" value="3" disabled />
+              </div>
+            </div>
             <label for="messageInput">问题</label>
             <textarea id="messageInput" placeholder="例如：根据我上传的 OS 笔记解释 syscall 是什么"></textarea>
             <div class="button-row">
-              <button id="askButton" onclick="askAgent()">提问</button>
+              <button id="askButton" onclick="askQuestion()">提问</button>
               <button class="secondary-button" onclick="clearQuestion()">清空</button>
             </div>
           </div>
@@ -321,7 +400,7 @@
 
         <section class="panel">
           <div class="panel-header">
-            <h2>Agent Trace</h2>
+            <h2>Trace / 检索调试</h2>
           </div>
           <div class="panel-body">
             <pre id="traceResult" class="muted">暂无 trace。</pre>
@@ -332,12 +411,32 @@
   </main>
 
   <script>
+    let askMode = "agent";
+
     function setStatus(text) {
       document.getElementById("statusText").textContent = text;
     }
 
     function formatJson(data) {
       return JSON.stringify(data, null, 2);
+    }
+
+    function setAskMode(mode) {
+      askMode = mode;
+      document.getElementById("agentModeButton").classList.toggle("active", mode === "agent");
+      document.getElementById("ragModeButton").classList.toggle("active", mode === "rag");
+      document.getElementById("topKInput").disabled = mode !== "rag";
+      setStatus(mode === "agent" ? "Agent mode" : "RAG mode");
+    }
+
+    function getTopK() {
+      const value = Number(document.getElementById("topKInput").value);
+
+      if (!Number.isFinite(value) || value < 1) {
+        return 3;
+      }
+
+      return Math.min(Math.floor(value), 10);
     }
 
     function clearQuestion() {
@@ -386,12 +485,13 @@
       }
     }
 
-    async function askAgent() {
+    async function askQuestion() {
       const message = document.getElementById("messageInput").value;
       const answerResult = document.getElementById("answerResult");
       const toolResult = document.getElementById("toolResult");
       const traceResult = document.getElementById("traceResult");
       const button = document.getElementById("askButton");
+      const isRagMode = askMode === "rag";
 
       if (!message.trim()) {
         answerResult.textContent = "请输入问题。";
@@ -400,28 +500,43 @@
       }
 
       button.disabled = true;
-      setStatus("Thinking");
+      setStatus(isRagMode ? "RAG thinking" : "Agent thinking");
       answerResult.className = "answer-box muted";
       answerResult.textContent = "思考中...";
       toolResult.textContent = "";
       traceResult.textContent = "";
 
       try {
-        const response = await fetch("/agent", {
+        const response = await fetch(isRagMode ? "/chat/ask" : "/agent", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            message: message
-          })
+          body: JSON.stringify(
+            isRagMode
+              ? {
+                  question: message,
+                  top_k: getTopK()
+                }
+              : {
+                  message: message
+                }
+          )
         });
 
         const data = await response.json();
         answerResult.className = data.error ? "answer-box error" : "answer-box";
         answerResult.textContent = data.answer || data.error || "";
-        toolResult.textContent = formatJson(data.tool_result || data.contexts || null);
-        traceResult.textContent = formatJson(data.trace || data);
+        toolResult.textContent = formatJson(
+          isRagMode
+            ? data.retrieval_debug?.reranked_chunks || null
+            : data.tool_result || data.contexts || null
+        );
+        traceResult.textContent = formatJson(
+          isRagMode
+            ? data.retrieval_debug || data
+            : data.trace || data
+        );
         setStatus(data.error ? "Error" : "Answered");
       } catch (error) {
         answerResult.className = "answer-box error";
