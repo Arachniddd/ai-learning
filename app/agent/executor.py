@@ -1,8 +1,12 @@
 import time
 
 from app.agent.planner import plan_next_step
-from app.agent.tools import search_knowledge_base, list_chunks, summarize_text
-from app.llm.client import final_answer_with_tool_result
+from app.agent.tools import (
+    final_answer_with_tool_result,
+    list_chunks,
+    search_knowledge_base,
+    summarize_text,
+)
 from app.observability.logger import write_agent_log
 
 

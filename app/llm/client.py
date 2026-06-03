@@ -76,10 +76,20 @@ def summarize_note(text : str) -> dict:
     }
 
 
+def rewrite_query(question: str) -> str:
+    prompt = build_query_rewrite_prompt(question)
+    response = chat_with_llm(prompt=prompt)
+    rewritten = response.strip()
+
+    if not rewritten:
+        return question
+
+    return rewritten
+
+
 def answer_with_context(question: str, contexts: list[Chunk]):
-    rewritten_question = rewrite_query(question)
     prompt = build_rag_answer_prompt(
-        question=rewritten_question,
+        question=question,
         chunks=chunks_to_dicts(contexts),
     )
 
@@ -96,8 +106,7 @@ def answer_with_context(question: str, contexts: list[Chunk]):
 
 
 def decide_tool_use(message : str) -> dict:
-    rewritten_message = rewrite_query(message)
-    prompt = build_tool_decision_prompt(rewritten_message)
+    prompt = build_tool_decision_prompt(message)
 
     content = chat_with_llm(
         prompt=prompt,
@@ -110,9 +119,8 @@ def decide_tool_use(message : str) -> dict:
 
 
 def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> dict:
-    rewritten_message = rewrite_query(message)
     prompt = build_rag_answer_prompt(
-        question=rewritten_message,
+        question=message,
         chunks=chunks_to_dicts(tool_result),
     )
 
@@ -128,18 +136,6 @@ def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> d
         "used_chunks": [chunk.id for chunk in tool_result],
     }
 
-
-def rewrite_query(question: str) -> str:
-    prompt = build_query_rewrite_prompt(question)
-
-    response = chat_with_llm(prompt)
-
-    rewritten = response.strip()
-
-    if not rewritten:
-        return question
-
-    return rewritten
 
 def rerank_chunks(
     question : str,

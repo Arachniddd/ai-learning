@@ -1,4 +1,4 @@
-from app.llm.client import decide_tool_use
+from app.agent.tools import decide_tool_use
 
 
 def plan_next_step(message: str) -> dict:
