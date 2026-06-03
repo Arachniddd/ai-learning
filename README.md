@@ -51,6 +51,8 @@ ai-learning/
 │   ├── agent/                      # Agent 执行层
 │   │   ├── planner.py               # 让 LLM 判断是否需要工具
 │   │   ├── tools.py                 # Agent 可调用工具
+│   │   ├── tool_executor.py         # 工具查找、参数校验与执行
+│   │   ├── tracer.py                # Agent workflow trace 数据结构
 │   │   └── executor.py              # Agent 执行主流程
 │   ├── llm/
 │   │   └── client.py                # DeepSeek / OpenAI-compatible LLM 调用
@@ -223,13 +225,13 @@ GET  /logs/agent      查看 Agent trace 日志
 
 ```text
 用户输入 message
--> executor 创建 workflow trace
+-> executor 创建 AgentTrace
 -> planner 根据 message 和 previous_steps 规划下一步
--> 如果 action_type 是 tool_call，executor 通过 registry 执行工具
--> executor 把 action 和 observation 追加到 steps
+-> 如果 action_type 是 tool_call，executor 通过 tool_executor 执行工具
+-> AgentTrace 把 action 和 observation 追加到 steps
 -> planner 继续读取 previous_steps，决定下一步
 -> 如果 action_type 是 final_answer，executor 返回最终答案
--> 每一步都会记录 trace 到 logs/agent_logs.jsonl
+-> executor 每一步把 trace 写入 logs/agent_logs.jsonl
 ```
 
 ## 我构建这个项目的流程总结
