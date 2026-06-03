@@ -2,11 +2,9 @@ import time
 import uuid
 from typing import Any
 
-from pydantic import ValidationError
-
 from app.agent.planner import plan_next_action
-from app.agent.registry import get_tool_spec
-from app.agent.schemas import AgentAction, AgentStep, ToolResult
+from app.agent.schemas import AgentStep
+from app.agent.tool_executor import execute_tool
 from app.observability.logger import write_agent_log
 
 
@@ -24,40 +22,6 @@ def to_jsonable(value: Any) -> Any:
         return [to_jsonable(item) for item in value]
 
     return value
-
-
-def execute_tool(action: AgentAction) -> ToolResult:
-    tool_name = action.tool_name or ""
-    tool_spec = get_tool_spec(tool_name)
-
-    if tool_spec is None:
-        return ToolResult(
-            success=False,
-            tool_name=tool_name,
-            error=f"Unknown tool: {tool_name}",
-        )
-
-    try:
-        args_model = tool_spec.args_schema.model_validate(action.arguments)
-        result = tool_spec.func(**args_model.model_dump())
-
-        return ToolResult(
-            success=True,
-            tool_name=tool_name,
-            result=result,
-        )
-    except ValidationError as e:
-        return ToolResult(
-            success=False,
-            tool_name=tool_name,
-            error=f"Tool arguments validation failed: {str(e)}",
-        )
-    except Exception as e:
-        return ToolResult(
-            success=False,
-            tool_name=tool_name,
-            error=str(e),
-        )
 
 
 def run_agent(message: str) -> dict:
@@ -117,7 +81,10 @@ def run_agent(message: str) -> dict:
 
                 return response
 
-            observation = execute_tool(action)
+            observation = execute_tool(
+                tool_name=action.tool_name or "",
+                arguments=action.arguments,
+            )
             step_retrieval_debug = None
 
             latest_tool_output = observation.result
