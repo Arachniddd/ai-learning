@@ -1,6 +1,6 @@
 from app.llm.client import answer_with_chunks, rerank_chunks, rewrite_query
 from app.rag.retrieve import retrieve
-from app.rag.types import RetrieveChunk
+from app.models.chunk import RetrieveChunk
 
 
 def retrieve_reranked_chunks(question: str, top_k: int = 3) -> dict:

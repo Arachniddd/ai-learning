@@ -12,7 +12,7 @@
 - 使用 sentence-transformers 生成文本 embedding
 - 使用 ChromaDB 持久化存储和向量检索
 - 使用 DeepSeek OpenAI-compatible API 完成 query rewrite、rerank、总结、工具决策和最终回答
-- 将 prompt 统一集中在 `app/llm/prompt.py`
+- 将 prompt 按用途拆分到 `app/prompts/llm.py` 和 `app/prompts/agent.py`
 - 支持 query rewrite，让问题更适合向量检索
 - 支持 LLM rerank，对向量库召回的候选 chunk 进行二次排序
 - 支持 Agent 工具调用：
@@ -53,14 +53,17 @@ ai-learning/
 │   │   ├── tools.py                 # Agent 可调用工具
 │   │   └── executor.py              # Agent 执行主流程
 │   ├── llm/
-│   │   ├── client.py                # DeepSeek / OpenAI-compatible LLM 调用
-│   │   └── prompt.py                # query rewrite、rerank、RAG answer 等 prompt
+│   │   └── client.py                # DeepSeek / OpenAI-compatible LLM 调用
+│   ├── prompts/
+│   │   ├── llm.py                   # query rewrite、rerank、RAG answer、summary prompt
+│   │   └── agent.py                 # Agent tool decision / planner prompt
+│   ├── models/
+│   │   └── chunk.py                 # Chunk / RetrieveChunk 共享数据模型
 │   ├── rag/
 │   │   ├── splitter.py              # 文本切分逻辑
 │   │   ├── vector_store.py          # ChromaDB 向量存储与检索
 │   │   ├── retrieve.py              # RAG 检索封装，接收已经准备好的 query
 │   │   ├── qa.py                    # 完整 RAG 问答流程
-│   │   └── types.py                 # Chunk / RetrieveChunk 类型定义
 │   ├── schemas/                    # FastAPI 请求模型
 │   └── observability/
 │       └── logger.py                # Agent trace 日志读写
@@ -199,12 +202,14 @@ GET  /logs/agent      查看 Agent trace 日志
 
 ```text
 用户输入 message
--> planner 判断是否需要 search_knowledge_base 工具
+-> planner 生成下一步 AgentAction
+-> 如果动作为 tool_call，executor 调用 search_knowledge_base 工具
 -> tools.search_knowledge_base 接收 query
 -> llm.rewrite_query 改写成更适合检索的 query
 -> rag.retrieve 使用改写后的 query 进行向量检索
 -> llm.rerank_chunks 对候选 chunks 进行二次排序
--> executor 将 rerank 后的 chunks 交给 LLM 生成最终答案
+-> executor 把工具结果加入 previous_steps
+-> planner 根据 previous_steps 决定继续调用工具或输出 final_answer
 ```
 
 这里的职责划分是：
@@ -218,12 +223,13 @@ GET  /logs/agent      查看 Agent trace 日志
 
 ```text
 用户输入 message
--> planner 调用 LLM 判断是否需要工具
--> 如果不需要工具，直接回答
--> 如果需要工具，选择 search_knowledge_base / list_chunks / summarize_text
--> executor 执行对应工具
--> 如有检索结果，再调用 LLM 生成最终答案
--> 记录 trace 到 logs/agent_logs.jsonl
+-> executor 创建 workflow trace
+-> planner 根据 message 和 previous_steps 规划下一步
+-> 如果 action_type 是 tool_call，executor 通过 registry 执行工具
+-> executor 把 action 和 observation 追加到 steps
+-> planner 继续读取 previous_steps，决定下一步
+-> 如果 action_type 是 final_answer，executor 返回最终答案
+-> 每一步都会记录 trace 到 logs/agent_logs.jsonl
 ```
 
 ## 我构建这个项目的流程总结
@@ -252,6 +258,12 @@ GET / -> {"message": "helloapi"}
 ### 3. 定义 Chunk 数据结构
 
 为了避免项目里到处使用松散的 dict，我增加了 `Chunk` 和 `RetrieveChunk`：
+
+这两个模型现在放在：
+
+```text
+app/models/chunk.py
+```
 
 ```text
 Chunk:
@@ -311,13 +323,14 @@ chat_with_llm(...)
 
 其他 query rewrite、rerank、总结、工具决策、最终回答都通过它调用 LLM。
 
-同时把 prompt 集中放到了：
+同时把 prompt 按用途拆分到了：
 
 ```text
-app/llm/prompt.py
+app/prompts/llm.py
+app/prompts/agent.py
 ```
 
-这样 `client.py` 主要负责调用模型，`prompt.py` 负责构造不同任务的提示词。
+这样 `client.py` 主要负责调用模型，`prompts/` 负责构造不同任务的提示词。
 
 ### 6. 实现 RAG 问答
 
@@ -409,10 +422,11 @@ logs/agent_logs.jsonl
 每次 Agent 执行都会记录：
 
 - 用户问题
-- 工具决策
-- 工具名称
-- 工具参数
-- 工具结果
+- workflow_id
+- steps
+- 每一步的 action
+- 每一步的 observation
+- 每一步对应的 retrieval_debug
 - 最终回答
 - 耗时
 - 错误信息

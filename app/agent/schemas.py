@@ -40,6 +40,7 @@ class AgentStep(BaseModel):
     step_index : int
     action : AgentAction
     observation : Optional[ToolResult] = None
+    retrieval_debug : Optional[dict[str, Any]] = None
 
 
 class AgentToolResult(BaseModel):

@@ -4,7 +4,7 @@ from app.llm.client import (
     summarize_note,
 )
 from app.rag.qa import retrieve_reranked_chunks
-from app.rag.types import Chunk
+from app.models.chunk import Chunk
 from app.rag.vector_store import list_all_chunks
 
 

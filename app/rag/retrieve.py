@@ -1,4 +1,4 @@
-from app.rag.types import RetrieveChunk
+from app.models.chunk import RetrieveChunk
 from app.rag.vector_store import search_vector_store
 
 

@@ -6,7 +6,8 @@ from typing import Any
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from app.llm.prompt import (
+from app.prompts.agent import build_tool_decision_prompt
+from app.prompts.llm import (
     DEFAULT_SYSTEM_PROMPT,
     JSON_ONLY_SYSTEM_PROMPT,
     RAG_ANSWER_SYSTEM_PROMPT,
@@ -15,9 +16,8 @@ from app.llm.prompt import (
     build_rag_answer_prompt,
     build_rerank_prompt,
     build_summarize_prompt,
-    build_tool_decision_prompt,
 )
-from app.rag.types import Chunk, RetrieveChunk
+from app.models.chunk import Chunk, RetrieveChunk
 
 
 load_dotenv()

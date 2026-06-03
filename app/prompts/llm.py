@@ -1,4 +1,4 @@
-from app.rag.types import Chunk
+from app.models.chunk import Chunk
 
 
 DEFAULT_SYSTEM_PROMPT = "你是一个可靠的 AI 助手。"
@@ -131,74 +131,4 @@ def build_summarize_prompt(text: str) -> str:
 {text}
 
 总结：
-""".strip()
-
-
-def build_tool_decision_prompt(message: str) -> str:
-    return f"""
-你是一个 AI Agent。你可以使用以下工具：
-
-工具 1：
-名称：search_knowledge_base
-作用：从用户上传的课程资料中检索相关内容
-参数：
-{{
-  "query": "检索问题",
-  "top_k": 3
-}}
-
-工具 2：
-名称：list_chunks
-作用：查看当前知识库中已经存储的文本片段
-参数：
-{{
-  "limit": 20
-}}
-
-工具 3：
-名称：summarize_text
-作用：总结用户直接提供的一段文本
-参数：
-{{
-  "text": "需要总结的文本"
-}}
-
-请判断用户的问题是否需要使用工具。
-
-如果需要查询知识库，只返回 JSON：
-{{
-  "need_tool": true,
-  "tool_name": "search_knowledge_base",
-  "arguments": {{
-    "query": "要检索的问题",
-    "top_k": 3
-  }}
-}}
-
-如果需要查看已有 chunk，只返回 JSON：
-{{
-  "need_tool": true,
-  "tool_name": "list_chunks",
-  "arguments": {{
-    "limit": 20
-  }}
-}}
-
-如果需要总结用户直接给出的文本，只返回 JSON：
-{{
-  "need_tool": true,
-  "tool_name": "summarize_text",
-  "arguments": {{
-    "text": "需要总结的文本"
-  }}
-}}
-
-如果不需要工具，只返回 JSON：
-{{
-  "need_tool": false,
-  "answer": "直接回答用户的问题"
-}}
-
-用户问题：
-{message}
 """.strip()

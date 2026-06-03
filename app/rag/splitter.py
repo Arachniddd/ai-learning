@@ -4,7 +4,7 @@ import uuid
 import re
 from pathlib import Path
 
-from app.rag.types import Chunk
+from app.models.chunk import Chunk
 
 def estimate_token_count(text: str) -> int:
     """

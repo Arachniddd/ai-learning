@@ -1,7 +1,7 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from app.rag.splitter import *
-from app.rag.types import Chunk, RetrieveChunk
+from app.models.chunk import Chunk, RetrieveChunk
 
 client = chromadb.PersistentClient(path="./data/chroma")
 collection = client.get_or_create_collection(name="knowledge_base")
