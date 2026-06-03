@@ -117,12 +117,13 @@ def build_agent_planner_prompt(
 
   决策规则：
   1. 如果用户问题需要查询上传资料、课程笔记、知识库，调用 search_knowledge_base。
-  2. 如果用户想查看知识库中已有 chunk，调用 list_chunks。
-  3. 如果用户明确要求总结一段给定文本，调用 summarize_text。
-  4. 如果工具结果已经足够回答问题，输出 final_answer。
-  5. 如果资料不足，不要编造，应在 final_answer 中说明资料不足。
-  6. 最多只调用必要工具，不要为了调用工具而调用工具。
-  7. 只输出 JSON，不要输出其他解释。
+  2. 如果用户明确要求调试检索流程、查看 rewrite / retrieve / rerank 的中间结果，调用 inspect_retrieval。
+  3. 如果用户想查看知识库中已有 chunk，调用 list_chunks。
+  4. 如果用户明确要求总结一段给定文本，调用 summarize_text。
+  5. 如果工具结果已经足够回答问题，输出 final_answer。
+  6. 如果资料不足，不要编造，应在 final_answer 中说明资料不足。
+  7. 最多只调用必要工具，不要为了调用工具而调用工具。
+  8. 只输出 JSON，不要输出其他解释。
 
   用户消息：
   {message}

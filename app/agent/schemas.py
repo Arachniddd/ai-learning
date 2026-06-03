@@ -1,6 +1,6 @@
 from typing import Literal, Optional, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AgentAction(BaseModel):
@@ -53,6 +53,27 @@ class AgentToolResult(BaseModel):
 class SearchKnowledgeBaseArgs(BaseModel):
     query: str = Field(description="用于检索知识库的问题")
     top_k: int = Field(default=3, ge=1, le=10, description="返回的 chunk 数量")
+
+
+class InspectRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    question: str = Field(
+        alias="query",
+        description="用于调试检索流程的原始问题",
+    )
+    retrieve_top_k: int = Field(
+        default=10,
+        ge=1,
+        le=30,
+        description="直接向量检索返回的 chunk 数量",
+    )
+    rerank_top_k: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="rerank 后返回的 chunk 数量",
+    )
 
 
 class ListChunksArgs(BaseModel):

@@ -1,10 +1,13 @@
 from app.llm.client import (
     decide_tool_use as llm_decide_tool_use,
     final_answer_with_tool_result as llm_final_answer_with_tool_result,
+    rerank_chunks,
+    rewrite_query,
     summarize_note,
 )
 from app.rag.qa import retrieve_reranked_chunks
 from app.models.chunk import Chunk
+from app.rag.retrieve import retrieve
 from app.rag.vector_store import list_all_chunks
 
 
@@ -21,6 +24,30 @@ def search_knowledge_base(query: str, top_k: int = 3) -> dict:
             "retrieved_chunks": result["retrieved_chunks"],
             "reranked_chunks": result["reranked_chunks"],
         },
+    }
+
+
+def inspect_retrieval(
+    question: str,
+    retrieve_top_k: int = 10,
+    rerank_top_k: int = 3,
+) -> dict:
+    rewritten_query = rewrite_query(question)
+    retrieved_chunks = retrieve(
+        query=rewritten_query,
+        top_k=retrieve_top_k,
+    )
+    reranked_chunks = rerank_chunks(
+        question=rewritten_query,
+        chunks=retrieved_chunks,
+        top_k=rerank_top_k,
+    )
+
+    return {
+        "original_query": question,
+        "rewritten_query": rewritten_query,
+        "retrieved_chunks": retrieved_chunks,
+        "reranked_chunks": reranked_chunks,
     }
 
 

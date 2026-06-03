@@ -8,6 +8,7 @@ from app.api.routes_docs import router as docs_router
 from app.api.routes_chat import router as chat_router
 from app.api.routes_agent import router as agent_router
 from app.api.routes_logs import router as logs_router
+from app.api.routes_debug import router as debug_router
 
 
 app = FastAPI(title="RAG Agent Demo")
@@ -27,3 +28,4 @@ app.include_router(docs_router, prefix="/docs-api", tags=["documents"])
 app.include_router(chat_router, prefix="/chat", tags=["chat"])
 app.include_router(agent_router, prefix="/agent", tags=["agent"])
 app.include_router(logs_router, prefix="/logs", tags=["logs"])
+app.include_router(debug_router, prefix="/debug", tags=["debug"])

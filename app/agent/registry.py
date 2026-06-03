@@ -4,11 +4,13 @@ from typing import Callable, Type
 from pydantic import BaseModel
 
 from app.agent.schemas import (
+    InspectRequest,
     SearchKnowledgeBaseArgs,
     ListChunksArgs,
     SummarizeTextArgs,
 )
 from app.agent.tools import (
+    inspect_retrieval,
     search_knowledge_base,
     list_chunks,
     summarize_text,
@@ -28,6 +30,12 @@ TOOL_REGISTRY : dict[str, ToolSpec] = {
         description="当用户需要查询知识库、课程笔记、上传文档内容时使用。",
         args_schema=SearchKnowledgeBaseArgs,
         func=search_knowledge_base,
+    ),
+    "inspect_retrieval": ToolSpec(
+        name="inspect_retrieval",
+        description="当用户需要调试检索流程，查看原始 query、重写 query、直接检索 chunks 和 rerank chunks 时使用。",
+        args_schema=InspectRequest,
+        func=inspect_retrieval,
     ),
     "list_chunks": ToolSpec(
         name="list_chunks",

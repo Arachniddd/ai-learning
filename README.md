@@ -47,6 +47,7 @@ ai-learning/
 │   │   ├── routes_docs.py           # 文档上传、切分、chunk 管理
 │   │   ├── routes_chat.py           # RAG 问答接口
 │   │   ├── routes_agent.py          # Agent 入口
+│   │   ├── routes_debug.py          # RAG 检索调试接口
 │   │   └── routes_logs.py           # Agent 日志读取
 │   ├── agent/                      # Agent 执行层
 │   │   ├── planner.py               # 让 LLM 判断是否需要工具
@@ -169,6 +170,7 @@ DELETE /docs-api/chunks          清空知识库 chunks
 ```text
 POST /chat/ask        完整 RAG 问答
 POST /agent           Agent 自动决策是否使用工具
+POST /debug/retrieval 调试 rewrite / retrieve / rerank 流程
 GET  /logs/agent      查看 Agent trace 日志
 ```
 
