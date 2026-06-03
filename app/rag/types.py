@@ -14,3 +14,4 @@ class RetrieveChunk(Chunk):
     distance : Optional[float] = None
     score : Optional[float] = None
     rerank_score : Optional[float] = None
+    rerank_reason : Optional[str] = None

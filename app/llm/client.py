@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from typing import Any
 
 from dotenv import load_dotenv
@@ -16,7 +17,7 @@ from app.llm.prompt import (
     build_summarize_prompt,
     build_tool_decision_prompt,
 )
-from app.rag.types import Chunk
+from app.rag.types import Chunk, RetrieveChunk
 
 
 load_dotenv()
@@ -128,20 +129,6 @@ def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> d
     }
 
 
-def rerank_chunks(question: str, chunks: list[Chunk]) -> list[dict]:
-    prompt = build_rerank_prompt(
-        question=question,
-        chunks=chunks_to_dicts(chunks),
-    )
-
-    content = chat_with_llm(
-        prompt=prompt,
-        system_prompt=JSON_ONLY_SYSTEM_PROMPT,
-        temperature=0.1,
-    )
-
-    return json.loads(content)
-
 def rewrite_query(question: str) -> str:
     prompt = build_query_rewrite_prompt(question)
 
@@ -153,3 +140,56 @@ def rewrite_query(question: str) -> str:
         return question
 
     return rewritten
+
+def rerank_chunks(
+    question : str,
+    chunks : list[RetrieveChunk],
+    top_k : int = 3        
+)->list[RetrieveChunk]:
+    prompt = build_rerank_prompt(
+        question=question,
+        chunks=chunks_to_dicts(chunks),
+    )
+
+    raw = chat_with_llm(
+        prompt=prompt,
+        system_prompt=JSON_ONLY_SYSTEM_PROMPT,
+        temperature=0.1,
+    )
+
+    try:
+        match = re.search(r"\[.*\]", raw, re.S)
+
+        if not match:
+            return chunks[:top_k]
+        
+        scores = json.loads(match.group(0))
+
+        score_map = {
+            item["candidate_index"]: item
+            for item in scores
+            if "candidate_index" in item and "score" in item
+        }
+
+        reranked = []
+
+        for idx, chunk in enumerate(chunks):
+            item = score_map.get(idx, {})
+
+            new_chunk = chunk.model_copy(
+                update={
+                    "rerank_score": item.get("score", 0),
+                    "rerank_reason": item.get("reason", ""),
+                }
+            )
+            reranked.append(new_chunk)
+
+        reranked.sort(key=lambda chunk: chunk.rerank_score or 0, reverse=True)
+
+        return [
+            chunk for chunk in reranked
+            if (chunk.rerank_score or 0) >= 5
+        ][:top_k]
+    
+    except Exception:
+        return chunks[:top_k]
