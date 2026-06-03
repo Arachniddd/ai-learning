@@ -4,17 +4,24 @@ from app.llm.client import (
     summarize_note,
 )
 from app.rag.qa import retrieve_reranked_chunks
-from app.rag.types import Chunk, RetrieveChunk
+from app.rag.types import Chunk
 from app.rag.vector_store import list_all_chunks
 
 
-def retrieve_knowledge_base(query: str, top_k: int = 3) -> dict:
-    return retrieve_reranked_chunks(question=query, top_k=top_k)
+def search_knowledge_base(query: str, top_k: int = 3) -> dict:
+    result = retrieve_reranked_chunks(question=query, top_k=top_k)
 
-
-def search_knowledge_base(query: str, top_k: int = 3) -> list[RetrieveChunk]:
-    result = retrieve_knowledge_base(query=query, top_k=top_k)
-    return result["reranked_chunks"]
+    return {
+        "query": query,
+        "rewritten_query": result["rewritten_query"],
+        "chunks": result["reranked_chunks"],
+        "retrieval_debug": {
+            "original_query": result["original_query"],
+            "rewritten_query": result["rewritten_query"],
+            "retrieved_chunks": result["retrieved_chunks"],
+            "reranked_chunks": result["reranked_chunks"],
+        },
+    }
 
 
 def decide_tool_use(message: str) -> dict:

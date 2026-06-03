@@ -4,7 +4,7 @@ from app.agent.planner import plan_next_step
 from app.agent.tools import (
     final_answer_with_tool_result,
     list_chunks,
-    retrieve_knowledge_base,
+    search_knowledge_base,
     summarize_text,
 )
 from app.observability.logger import write_agent_log
@@ -49,15 +49,10 @@ def run_agent(message: str) -> dict:
             query = args.get("query", message)
             top_k = int(args.get("top_k", 3))
 
-            retrieval_result = retrieve_knowledge_base(query=query, top_k=top_k)
-            tool_result = retrieval_result["reranked_chunks"]
-            trace["tool_result"] = tool_result
-            trace["retrieval_debug"] = {
-                "original_query": retrieval_result["original_query"],
-                "rewritten_query": retrieval_result["rewritten_query"],
-                "retrieved_chunks": retrieval_result["retrieved_chunks"],
-                "reranked_chunks": retrieval_result["reranked_chunks"],
-            }
+            tool_output = search_knowledge_base(query=query, top_k=top_k)
+            tool_result = tool_output["chunks"]
+            trace["tool_result"] = tool_output
+            trace["retrieval_debug"] = tool_output["retrieval_debug"]
 
             result = final_answer_with_tool_result(
                 message=message,
@@ -73,6 +68,7 @@ def run_agent(message: str) -> dict:
                 "mode": "tool_call",
                 "tool_name": tool_name,
                 "tool_arguments": args,
+                "tool_result": tool_output,
                 "contexts": tool_result,
                 "answer": result.get("answer"),
                 "used_chunks": result.get("used_chunks", []),
