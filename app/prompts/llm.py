@@ -167,3 +167,44 @@ content:
 
 请生成题目：
 """.strip()
+
+
+def build_explain_concept_prompt(
+    concept: str,
+    chunks: list[Chunk],
+    detail_level: str = "medium",
+) -> str:
+    context_text = ""
+
+    for idx, chunk in enumerate(chunks):
+        context_text += f"""
+[资料 {idx}]
+source: {chunk.source}
+section: {chunk.section or ""}
+content:
+{chunk.content}
+""".strip() + "\n\n"
+
+    return f"""
+你是一个计算机课程助教。
+
+请基于资料解释概念「{concept}」。
+
+解释详细程度：
+{detail_level}
+
+要求：
+1. 只能基于资料解释，不要编造资料外内容。
+2. 如果资料不足，明确说明“资料不足，无法完整解释”。
+3. 用适合计算机专业学生理解的中文表达。
+4. 如果 detail_level 是 simple，解释要简洁，优先讲直觉。
+5. 如果 detail_level 是 medium，解释要包含定义、作用和基本过程。
+6. 如果 detail_level 是 deep，解释要包含背景、机制、关键细节和易混点。
+7. 关键结论后标注来源，例如：[资料 0]。
+8. 最后用“使用资料：”列出实际使用的资料编号。
+
+资料：
+{context_text}
+
+请解释概念：
+""".strip()

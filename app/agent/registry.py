@@ -4,6 +4,7 @@ from typing import Callable, Type
 from pydantic import BaseModel
 
 from app.agent.schemas import (
+    ExplainConceptArgs,
     GenerateQuizArgs,
     InspectRequest,
     SearchKnowledgeBaseArgs,
@@ -11,6 +12,7 @@ from app.agent.schemas import (
     SummarizeTextArgs,
 )
 from app.agent.tools import (
+    explain_concept,
     generate_quiz,
     inspect_retrieval,
     search_knowledge_base,
@@ -56,6 +58,12 @@ TOOL_REGISTRY : dict[str, ToolSpec] = {
         description="当用户要求基于知识库资料生成复习题、测验题、quiz 或练习题时使用。",
         args_schema=GenerateQuizArgs,
         func=generate_quiz,
+    ),
+    "explain_concept": ToolSpec(
+        name="explain_concept",
+        description="当用户要求解释某个课程概念、术语、机制或知识点时使用。",
+        args_schema=ExplainConceptArgs,
+        func=explain_concept,
     ),
 }
 

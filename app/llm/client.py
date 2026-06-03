@@ -12,6 +12,7 @@ from app.prompts.llm import (
     JSON_ONLY_SYSTEM_PROMPT,
     RAG_ANSWER_SYSTEM_PROMPT,
     SUMMARY_SYSTEM_PROMPT,
+    build_explain_concept_prompt,
     build_generate_quiz_prompt,
     build_query_rewrite_prompt,
     build_rag_answer_prompt,
@@ -143,6 +144,48 @@ def generate_quiz_from_chunks(
         "topic": topic,
         "num_questions": num_questions,
         "quiz": quiz,
+        "used_chunks": [
+            {
+                "id": chunk.id,
+                "source": chunk.source,
+                "section": chunk.section,
+                "score": getattr(chunk, "score", None),
+                "rerank_score": getattr(chunk, "rerank_score", None),
+            }
+            for chunk in chunks
+        ],
+    }
+
+
+def explain_with_chunks(
+    concept: str,
+    chunks: list[Chunk],
+    detail_level: str = "medium",
+) -> dict:
+    if not chunks:
+        return {
+            "concept": concept,
+            "detail_level": detail_level,
+            "explanation": "没有检索到足够相关的资料，无法基于资料解释这个概念。",
+            "used_chunks": [],
+        }
+
+    prompt = build_explain_concept_prompt(
+        concept=concept,
+        chunks=chunks,
+        detail_level=detail_level,
+    )
+
+    explanation = chat_with_llm(
+        prompt=prompt,
+        system_prompt=RAG_ANSWER_SYSTEM_PROMPT,
+        temperature=0.2,
+    )
+
+    return {
+        "concept": concept,
+        "detail_level": detail_level,
+        "explanation": explanation,
         "used_chunks": [
             {
                 "id": chunk.id,

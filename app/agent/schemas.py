@@ -92,3 +92,11 @@ class GenerateQuizArgs(BaseModel):
         le=10,
         description="生成题目数量",
     )
+
+
+class ExplainConceptArgs(BaseModel):
+    concept: str = Field(description="需要解释的概念")
+    detail_level: Literal["simple", "medium", "deep"] = Field(
+        default="medium",
+        description="解释详细程度：simple / medium / deep",
+    )

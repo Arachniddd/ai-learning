@@ -121,10 +121,11 @@ def build_agent_planner_prompt(
   3. 如果用户想查看知识库中已有 chunk，调用 list_chunks。
   4. 如果用户明确要求总结一段给定文本，调用 summarize_text。
   5. 如果用户要求基于资料生成复习题、测验题、quiz 或练习题，调用 generate_quiz。
-  6. 如果工具结果已经足够回答问题，输出 final_answer。
-  7. 如果资料不足，不要编造，应在 final_answer 中说明资料不足。
-  8. 最多只调用必要工具，不要为了调用工具而调用工具。
-  9. 只输出 JSON，不要输出其他解释。
+  6. 如果用户要求解释某个概念、术语、机制或知识点，调用 explain_concept。
+  7. 如果工具结果已经足够回答问题，输出 final_answer。
+  8. 如果资料不足，不要编造，应在 final_answer 中说明资料不足。
+  9. 最多只调用必要工具，不要为了调用工具而调用工具。
+  10. 只输出 JSON，不要输出其他解释。
 
   用户消息：
   {message}

@@ -1,5 +1,6 @@
 from app.llm.client import (
     decide_tool_use as llm_decide_tool_use,
+    explain_with_chunks,
     final_answer_with_tool_result as llm_final_answer_with_tool_result,
     generate_quiz_from_chunks,
     rerank_chunks,
@@ -89,3 +90,25 @@ def generate_quiz(topic: str, num_questions: int = 5) -> dict:
         chunks=chunks,
         num_questions=num_questions,
     )
+
+
+def explain_concept(concept: str, detail_level: str = "medium") -> dict:
+    retrieval_result = retrieve_reranked_chunks(question=concept, top_k=3)
+    chunks = retrieval_result["reranked_chunks"]
+
+    result = explain_with_chunks(
+        concept=concept,
+        chunks=chunks,
+        detail_level=detail_level,
+    )
+
+    result["retrieval_debug"] = {
+        "original_query": retrieval_result["original_query"],
+        "rewritten_query": retrieval_result["rewritten_query"],
+        "retrieved_count": len(retrieval_result["retrieved_chunks"]),
+        "reranked_count": len(chunks),
+        "retrieved_chunks": retrieval_result["retrieved_chunks"],
+        "reranked_chunks": chunks,
+    }
+
+    return result
