@@ -57,8 +57,16 @@ def chat_with_llm(
     return response.choices[0].message.content or ""
 
 
-def chunks_to_dicts(chunks: list[Chunk]) -> list[dict]:
-    return [chunk.model_dump() for chunk in chunks]
+def chunks_to_dicts(chunks: list[Chunk | dict[str, Any]]) -> list[dict[str, Any]]:
+    result = []
+
+    for chunk in chunks:
+        if hasattr(chunk, "model_dump"):
+            result.append(chunk.model_dump())
+        else:
+            result.append(dict(chunk))
+
+    return result
 
 
 def summarize_note(text : str) -> dict:
@@ -87,22 +95,47 @@ def rewrite_query(question: str) -> str:
     return rewritten
 
 
-def answer_with_context(question: str, contexts: list[Chunk]):
+def answer_with_chunks(
+    question: str,
+    chunks: list[Chunk | dict[str, Any]],
+    model: str = "deepseek-v4-flash",
+) -> dict:
+    if not chunks:
+        return {
+            "answer": "我没有在知识库中检索到足够相关的内容，无法基于资料回答这个问题。",
+            "used_chunks": [],
+        }
+
+    chunk_dicts = chunks_to_dicts(chunks)
     prompt = build_rag_answer_prompt(
         question=question,
-        chunks=chunks_to_dicts(contexts),
+        chunks=chunk_dicts,
     )
 
     content = chat_with_llm(
         prompt=prompt,
+        model=model,
         system_prompt=RAG_ANSWER_SYSTEM_PROMPT,
         temperature=0.2,
     )
 
     return {
         "answer": content,
-        "used_chunks": [chunk.id for chunk in contexts],
+        "used_chunks": [
+            {
+                "id": chunk.get("id"),
+                "source": chunk.get("source", ""),
+                "section": chunk.get("section", ""),
+                "score": chunk.get("score"),
+                "rerank_score": chunk.get("rerank_score"),
+            }
+            for chunk in chunk_dicts
+        ],
     }
+
+
+def answer_with_context(question: str, contexts: list[Chunk]) -> dict:
+    return answer_with_chunks(question=question, chunks=contexts)
 
 
 def decide_tool_use(message : str) -> dict:
@@ -119,22 +152,11 @@ def decide_tool_use(message : str) -> dict:
 
 
 def final_answer_with_tool_result(message : str, tool_result : list[Chunk]) -> dict:
-    prompt = build_rag_answer_prompt(
+    return answer_with_chunks(
         question=message,
-        chunks=chunks_to_dicts(tool_result),
-    )
-
-    content = chat_with_llm(
-        prompt=prompt,
+        chunks=tool_result,
         model="deepseek-chat",
-        system_prompt=RAG_ANSWER_SYSTEM_PROMPT,
-        temperature=0.2,
     )
-
-    return {
-        "answer": content,
-        "used_chunks": [chunk.id for chunk in tool_result],
-    }
 
 
 def rerank_chunks(

@@ -1,27 +1,16 @@
 from app.llm.client import (
     decide_tool_use as llm_decide_tool_use,
     final_answer_with_tool_result as llm_final_answer_with_tool_result,
-    rerank_chunks,
-    rewrite_query,
     summarize_note,
 )
-from app.rag.retrieve import retrieve
+from app.rag.qa import retrieve_reranked_chunks
 from app.rag.types import Chunk, RetrieveChunk
 from app.rag.vector_store import list_all_chunks
 
 
 def search_knowledge_base(query: str, top_k: int = 3) -> list[RetrieveChunk]:
-    rewritten_query = rewrite_query(query)
-    candidates = retrieve(query=rewritten_query, top_k=top_k * 3)
-
-    if not candidates:
-        return []
-
-    return rerank_chunks(
-        question=rewritten_query,
-        chunks=candidates,
-        top_k=top_k,
-    )
+    result = retrieve_reranked_chunks(question=query, top_k=top_k)
+    return result["reranked_chunks"]
 
 
 def decide_tool_use(message: str) -> dict:

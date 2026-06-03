@@ -2,7 +2,7 @@
 
 一个基于 FastAPI、DeepSeek、ChromaDB 和 sentence-transformers 构建的课程资料 RAG Agent Demo。
 
-项目支持上传 `.txt` / `.md` 文件，将文本切分成 chunk，生成 embedding 后写入本地 ChromaDB 向量库。用户提问时，系统可以进行查询改写、向量检索，并让 LLM 基于检索到的上下文回答问题。项目还包含一个简单前端页面、Agent 工具调用流程和 trace 日志。
+项目支持上传 `.txt` / `.md` 文件，将文本切分成 chunk，生成 embedding 后写入本地 ChromaDB 向量库。用户提问时，Agent 可以进行查询改写、向量检索、LLM rerank，并让 LLM 基于检索到的上下文回答问题。项目还包含一个简单前端页面、Agent 工具调用流程和 trace 日志。
 
 ## 当前能力
 
@@ -11,8 +11,10 @@
 - 使用 Pydantic 定义 `Chunk` / `RetrieveChunk` 数据结构
 - 使用 sentence-transformers 生成文本 embedding
 - 使用 ChromaDB 持久化存储和向量检索
-- 使用 DeepSeek OpenAI-compatible API 完成总结、工具决策和最终回答
+- 使用 DeepSeek OpenAI-compatible API 完成 query rewrite、rerank、总结、工具决策和最终回答
+- 将 prompt 统一集中在 `app/llm/prompt.py`
 - 支持 query rewrite，让问题更适合向量检索
+- 支持 LLM rerank，对向量库召回的候选 chunk 进行二次排序
 - 支持 Agent 工具调用：
   - `search_knowledge_base`
   - `list_chunks`
@@ -43,7 +45,7 @@ ai-learning/
 │   ├── api/                        # API 路由层
 │   │   ├── routes_basic.py          # 根路径健康检查
 │   │   ├── routes_docs.py           # 文档上传、切分、chunk 管理
-│   │   ├── routes_chat.py           # 直接 RAG 问答接口
+│   │   ├── routes_chat.py           # RAG 问答接口
 │   │   ├── routes_agent.py          # Agent 入口
 │   │   └── routes_logs.py           # Agent 日志读取
 │   ├── agent/                      # Agent 执行层
@@ -51,11 +53,13 @@ ai-learning/
 │   │   ├── tools.py                 # Agent 可调用工具
 │   │   └── executor.py              # Agent 执行主流程
 │   ├── llm/
-│   │   └── client.py                # DeepSeek / OpenAI-compatible LLM 调用
+│   │   ├── client.py                # DeepSeek / OpenAI-compatible LLM 调用
+│   │   └── prompt.py                # query rewrite、rerank、RAG answer 等 prompt
 │   ├── rag/
 │   │   ├── splitter.py              # 文本切分逻辑
 │   │   ├── vector_store.py          # ChromaDB 向量存储与检索
-│   │   ├── retrieve.py              # 带 query rewrite 的检索封装
+│   │   ├── retrieve.py              # RAG 检索封装，接收已经准备好的 query
+│   │   ├── qa.py                    # 完整 RAG 问答流程
 │   │   └── types.py                 # Chunk / RetrieveChunk 类型定义
 │   ├── schemas/                    # FastAPI 请求模型
 │   └── observability/
@@ -158,7 +162,7 @@ DELETE /docs-api/chunks          清空知识库 chunks
 ### 问答与 Agent
 
 ```text
-POST /chat/ask        直接 RAG 问答
+POST /chat/ask        完整 RAG 问答
 POST /agent           Agent 自动决策是否使用工具
 GET  /logs/agent      查看 Agent trace 日志
 ```
@@ -181,13 +185,34 @@ GET  /logs/agent      查看 Agent trace 日志
 
 ```text
 用户提问
--> query rewrite 改写检索问题
--> sentence-transformers 生成问题 embedding
--> ChromaDB 检索相似 chunks
--> 组装上下文 context
+-> llm.rewrite_query 改写检索 query
+-> rag.retrieve 使用改写后的 query 检索候选 chunks
+-> llm.rerank_chunks 对候选 chunks 进行二次排序
+-> llm.answer_with_chunks 根据最终 chunks 组织上下文
 -> LLM 只根据上下文回答
--> 返回 answer / used_chunks / contexts
+-> 返回 answer / used_chunks / retrieval_debug
 ```
+
+`/chat/ask` 当前会调用 `app/rag/qa.py` 中的 `answer_question_with_rag`，API 层只负责接收请求和返回结果，不展开具体业务流程。
+
+### Agent 知识库检索流程
+
+```text
+用户输入 message
+-> planner 判断是否需要 search_knowledge_base 工具
+-> tools.search_knowledge_base 接收 query
+-> llm.rewrite_query 改写成更适合检索的 query
+-> rag.retrieve 使用改写后的 query 进行向量检索
+-> llm.rerank_chunks 对候选 chunks 进行二次排序
+-> executor 将 rerank 后的 chunks 交给 LLM 生成最终答案
+```
+
+这里的职责划分是：
+
+- `llm/client.py`: 提供 LLM 能力，例如 rewrite、rerank、总结、最终回答
+- `rag/retrieve.py`: 只负责根据 query 检索向量库，不负责改写问题
+- `rag/qa.py`: 负责完整 RAG 问答流程，例如 `answer_question_with_rag`
+- `agent/tools.py`: 负责把 rewrite、retrieve、rerank 组合成 Agent 可调用的工具
 
 ### Agent 流程
 
@@ -241,6 +266,7 @@ RetrieveChunk:
 - distance
 - score
 - rerank_score
+- rerank_reason
 ```
 
 这样 splitter、vector store、LLM 上下文组装之间的数据格式更统一，也更方便类型提示和调试。
@@ -283,18 +309,26 @@ client = OpenAI(
 chat_with_llm(...)
 ```
 
-其他总结、工具决策、最终回答都通过它调用 LLM。
+其他 query rewrite、rerank、总结、工具决策、最终回答都通过它调用 LLM。
+
+同时把 prompt 集中放到了：
+
+```text
+app/llm/prompt.py
+```
+
+这样 `client.py` 主要负责调用模型，`prompt.py` 负责构造不同任务的提示词。
 
 ### 6. 实现 RAG 问答
 
-RAG 问答分成两步：
+最开始的 RAG 问答分成两步：
 
 ```text
 检索：search_vector_store
-回答：answer_with_context
+回答：answer_with_chunks
 ```
 
-检索时先把问题转成 embedding，再从 ChromaDB 找相似 chunk。回答时把检索结果整理成 context，让 LLM 只根据 context 回答。
+检索时先把问题转成 embedding，再从 ChromaDB 找相似 chunk。回答时把检索结果整理成 context，让 LLM 只根据 context 回答。后来为了让职责更清楚，把回答函数改名为 `answer_with_chunks`，表示它只根据传入的 chunks 回答，不负责自己检索。
 
 ### 7. 增加 query rewrite
 
@@ -306,9 +340,42 @@ RAG 问答分成两步：
 
 例如用户问得比较口语化时，LLM 会补充一些更像知识库关键词的表达，再用于检索。
 
-### 8. 增加 Agent 工具调用
+现在 `rewrite_query` 放在 `llm/client.py` 中，因为它本质上是 LLM 能力；但它不会在 `answer_with_chunks`、`decide_tool_use`、`final_answer_with_tool_result` 里自动执行。真正需要检索时，由 `agent/tools.py` 或 `rag/qa.py` 显式调用它。
 
-在直接 RAG 问答之外，我增加了 Agent 层：
+### 8. 增加 RAG retrieve 与 rerank
+
+为了让检索流程更清晰，我把向量检索入口放在：
+
+```text
+app/rag/retrieve.py
+```
+
+这个文件只接收已经准备好的 query，然后调用向量库检索：
+
+```text
+query -> retrieve -> search_vector_store
+```
+
+随后在 Agent 工具层中组合完整流程：
+
+```text
+原始问题 -> rewrite_query -> retrieve -> rerank_chunks -> 最终 chunks
+```
+
+在 `/chat/ask` 中，完整问答流程由 `answer_question_with_rag` 统一编排：
+
+```text
+原始问题 -> rewrite_query -> retrieve -> rerank_chunks -> answer_with_chunks -> answer
+```
+
+`rerank_chunks` 会让 LLM 对向量库召回的候选 chunk 重新打分，并把结果写回 `RetrieveChunk`：
+
+- `rerank_score`: LLM 判断的相关性分数
+- `rerank_reason`: LLM 给出的简短理由
+
+### 9. 增加 Agent 工具调用
+
+在基础 RAG 问答之外，我增加了 Agent 层：
 
 - `planner`: 判断是否需要工具
 - `tools`: 暴露可调用工具
@@ -323,7 +390,15 @@ Agent 可以决定：
 是否总结用户给的文本
 ```
 
-### 9. 增加日志和 trace
+其中 `search_knowledge_base` 现在不是直接调用底层向量库，而是走：
+
+```text
+rewrite -> retrieve -> rerank
+```
+
+这样 Agent 拿到的是更适合最终回答的上下文。
+
+### 10. 增加日志和 trace
 
 为了观察 Agent 的行为，我增加了日志系统：
 
@@ -344,7 +419,7 @@ logs/agent_logs.jsonl
 
 这让项目从“能跑”变成“能观察、能调试”。
 
-### 10. 增加前端页面
+### 11. 增加前端页面
 
 一开始所有接口都只能在 Swagger 里调试。后来增加了 `static/index.html`，提供一个简单页面：
 
@@ -356,7 +431,7 @@ logs/agent_logs.jsonl
 
 这样项目开始从纯后端 API 变成一个可交互的小应用。
 
-### 11. Docker 化项目
+### 12. Docker 化项目
 
 最后用 Dockerfile 和 docker-compose.yml 把项目容器化：
 
@@ -382,7 +457,8 @@ logs/agent_logs.jsonl
 - 增加更完善的错误处理
 - 增加文件删除和按 source 删除 chunks
 - 增加更好的中文 embedding 模型
-- 增加 rerank
+- 优化 rerank 的 JSON 解析和容错
+- 进一步统一 `/chat/ask` 和 Agent 检索结果的展示格式
 - 增加用户会话和历史记录
 - 增加正式前端框架
 - 增加测试用例
