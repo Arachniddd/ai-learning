@@ -31,6 +31,13 @@ def run_agent(message: str, max_steps: int = MAX_AGENT_STEPS) -> dict:
                 action=action,
                 observation=observation,
             )
+
+            if observation.timed_out:
+                error = observation.error or "Tool execution timed out."
+                trace.finish(answer=error, error=error)
+                write_agent_log(trace.to_dict())
+                return trace.to_error_response()
+
             write_agent_log(trace.to_dict())
 
         answer = f"Agent 已达到最大步骤数 {max_steps}，未获得 final_answer。"

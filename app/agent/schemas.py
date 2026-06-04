@@ -34,6 +34,8 @@ class ToolResult(BaseModel):
     tool_name : str
     result : Any = None
     error : Optional[str] = None
+    duration_ms: Optional[int] = None
+    timed_out: bool = False
 
 
 class AgentStep(BaseModel):
